@@ -17,6 +17,8 @@ dist-ssr/
 # PlatformIO and Embedded IDE build files
 .pio/
 **/.pio/
+.venv/
+**/.venv/
 .vscode/
 **/.vscode/
 .idea/
