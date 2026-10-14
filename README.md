@@ -1,4 +1,4 @@
-# Hệ thống giám sát và điều khiển nhà thông minh - Bài thực hành 3
+# Hệ thống giám sát và điều khiển nhà thông minh
 Mạch ESP32-S3 Lolin S3 Mini, máy chủ Backend Node.js, giao diện người dùng React và cơ sở dữ liệu MySQL
 
 <div align="center">
