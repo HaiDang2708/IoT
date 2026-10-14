@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  }
+}
+
+/* Custom CSS properties for main brand colors */
+:root {
+  --color-primary: #3B82F6;
+  --color-secondary: #60A5FA;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+}
+
+/* Custom scrollbar for desktop */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full hover:bg-slate-400;
+}
+
+/* --- PREMIUM GLASSMORPHIC CARD --- */
+.premium-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.premium-card:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.07);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* --- PREMIUM TABLE CONTAINER --- */
+.premium-table-container {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+/* --- CARD SENSOR ICONS GLOWS --- */
+.sensor-glow-temp {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+  animation: pulse-temp-glow 2s infinite alternate;
+}
+.sensor-glow-hum {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  position: relative;
+}
+/* Ripple effect for humidity card */
+.sensor-glow-hum::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  animation: ripple-effect 2.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  pointer-events: none;
+}
+.sensor-glow-light {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+  animation: pulse-light-glow 2.5s infinite alternate;
+}
+
+@keyframes pulse-temp-glow {
+  0% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.15); }
+  100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+}
+
+@keyframes pulse-light-glow {
+  0% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.15); }
+  100% { box-shadow: 0 0 22px rgba(245, 158, 11, 0.45); }
+}
+
+@keyframes ripple-effect {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  100% { transform: scale(1.15); opacity: 0; }
+}

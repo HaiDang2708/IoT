@@ -1,0 +1,299 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "API_SmartHome_IOT",
+		"description": "Tài liệu API hệ thống Nhà Thông Minh (Smart Home IoT) với 5 REST API chuẩn hóa gọn nhẹ.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. AUTHENTICATION",
+			"item": [
+				{
+					"name": "POST /api/auth/login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "### 🔐 API Xác thực đăng nhập hệ thống\nAPI tiếp nhận thông tin tên đăng nhập và mật khẩu, kiểm tra mã hóa BCrypt và trả về thông tin tài khoản.\n\n* **Phương thức**: POST\n* **Đường dẫn**: `/api/auth/login`"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. USER PROFILE & SECURITY",
+			"item": [
+				{
+					"name": "GET /api/user",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/user?username=admin",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"user"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "admin",
+									"description": "Tên đăng nhập của tài khoản"
+								}
+							]
+						},
+						"description": "### 👤 API Lấy thông tin chi tiết tài khoản\nTruy vấn thông tin cá nhân và học tập chi tiết của người dùng dựa theo tên đăng nhập.\n\n* **Phương thức**: GET\n* **Đường dẫn**: `/api/user`"
+					},
+					"response": []
+				},
+				{
+					"name": "PUT /api/user (Cập nhật Profile / Đổi mật khẩu)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"admin\",\n  \"profile\": {\n    \"fullName\": \"Nguyễn Văn A\",\n    \"email\": \"admin@example.com\",\n    \"phone\": \"0912345678\",\n    \"mssv\": \"B20DCCN001\",\n    \"khoa\": \"Công Nghệ Thông Tin\"\n  }\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/user",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"user"
+							]
+						},
+						"description": "### ✏️ API Cập nhật hồ sơ cá nhân hoặc đổi mật khẩu\nGom chung chức năng chỉnh sửa profile và đổi mật khẩu.\n* Nếu đổi mật khẩu: Gửi kèm `oldPassword` và `newPassword`.\n* Nếu sửa profile: Gửi kèm object `profile`."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. DEVICE CONTROL",
+			"item": [
+				{
+					"name": "GET /api/devices",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/devices",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"devices"
+							]
+						},
+						"description": "### 📱 API Lấy danh sách toàn bộ thiết bị\nTrả về danh sách 3 thiết bị phần cứng (`led1`, `led2`, `led3`) cùng trạng thái ON/OFF hiện tại và chế độ AUTO/MANUAL."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH /api/devices/:id",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isON\": true,\n  \"isAuto\": false\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/devices/1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"devices",
+								"1"
+							]
+						},
+						"description": "### 🎛️ API Cập nhật linh hoạt thuộc tính thiết bị\nAPI duy nhất cho phép Bật/Tắt trạng thái (`isON`), chuyển chế độ tự động (`isAuto`), hoặc đổi tên/vị trí (`ten_thiet_bi`, `vi_tri`)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. SENSOR LOGS & ANALYTICS",
+			"item": [
+				{
+					"name": "GET /api/sensors (Lịch sử dữ liệu)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/sensors?type=logs&limit=72",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"sensors"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "logs",
+									"description": "Kiểu dữ liệu: logs (nhật ký) hoặc chart (biểu đồ)"
+								},
+								{
+									"key": "limit",
+									"value": "72",
+									"description": "Số bản ghi giới hạn"
+								}
+							]
+						},
+						"description": "### 🌡️ API Lấy nhật ký dữ liệu quan trắc cảm biến\nTruy vấn lịch sử các bản ghi Nhiệt độ, Độ ẩm, Ánh sáng theo khoảng thời gian."
+					},
+					"response": []
+				},
+				{
+					"name": "GET /api/sensors (Dữ liệu vẽ biểu đồ)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/sensors?type=chart&daysRange=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"sensors"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "chart"
+								},
+								{
+									"key": "daysRange",
+									"value": "1"
+								}
+							]
+						},
+						"description": "### 📊 API Lấy dữ liệu gom nhóm phục vụ vẽ biểu đồ\nTrả về dữ liệu trung bình cảm biến theo giờ/ngày."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. SYSTEM CONFIG & HISTORY",
+			"item": [
+				{
+					"name": "GET /api/system (Lịch sử / Cảnh báo / Ngưỡng)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:5000/api/system?type=history",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"system"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "history",
+									"description": "history (Lịch sử gộp), warnings (10 Cảnh báo Navbar), thresholds (Cấu hình ngưỡng)"
+								}
+							]
+						},
+						"description": "### ⚙️ API Lấy thông tin hệ thống tổng hợp\nCho phép lấy lịch sử hoạt động, danh sách cảnh báo Navbar hoặc các quy tắc ngưỡng an toàn."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT /api/system/thresholds",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tempMax\": 35.0,\n  \"humMin\": 30.0,\n  \"lightMin\": 100.0,\n  \"tempComp\": \">\",\n  \"humComp\": \">\",\n  \"lightComp\": \"<\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:5000/api/system/thresholds",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"api",
+								"system",
+								"thresholds"
+							]
+						},
+						"description": "### 🛡️ API Cập nhật ngưỡng tự động an toàn\nLưu giá trị ngưỡng mới vào MySQL và đồng bộ gói tin MQTT xuống ESP32."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
