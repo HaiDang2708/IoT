@@ -1,5 +1,5 @@
-# 🏡 SMART HOME IoT MONITORING & CONTROL SYSTEM — BÀI THỰC HÀNH 3
-*(Mạch ESP32-S3 / Lolin S3 Mini — Node.js Backend — React Web Dashboard — MySQL Database)*
+# Hệ thống giám sát và điều khiển nhà thông minh - Bài thực hành 3
+Mạch ESP32-S3 Lolin S3 Mini, máy chủ Backend Node.js, giao diện người dùng React và cơ sở dữ liệu MySQL
 
 <div align="center">
 
@@ -14,133 +14,134 @@
 
 ---
 
-## 👨‍🎓 Thông Tin Sinh Viên & Đề Tài
+## Thông tin sinh viên và đề tài
 
-* **Họ và tên:** Đặng Trần Hải Đăng
-* **Mã số sinh viên (MSSV):** B23DCAT036
-* **Lớp hành chính:** D23CQAT01-B
-* **Khoa đào tạo:** An Toàn Thông Tin (ATTT)
-* **Giảng viên hướng dẫn:** TS. Nguyễn Quốc Uy
-* **Cơ sở đào tạo:** Học viện Công nghệ Bưu chính Viễn thông (PTIT Hà Nội)
-* **Học phần:** Thực hành Internet of Things (IoT)
-
----
-
-## 📖 Giới Thiệu Dự Án
-
-Hệ thống **Smart Home IoT Monitoring & Control System** là giải pháp giám sát môi trường và điều khiển thiết bị thông minh toàn diện, tích hợp chặt chẽ giữa 3 tầng công nghệ:
-1. **Tầng Phần Cứng (Hardware Layer):** Vi điều khiển **ESP32-S3 (Lolin S3 Mini)** giao tiếp với cảm biến nhiệt độ - độ ẩm `DHT11`, cảm biến cường độ ánh sáng số `BH1750` qua chuẩn I2C, và điều khiển 3 cơ cấu chấp hành (Quạt, Máy hút ẩm, Đèn ngoài trời).
-2. **Tầng Dịch Vụ Máy Chủ (Backend Layer):** Máy chủ **Node.js / Express** đóng vai trò cầu nối thông minh giữa giao thức **MQTT** (`broker.emqx.io:1883`) và cơ sở dữ liệu quan hệ **MySQL** (`dang_iot`), đồng thời cung cấp hệ thống REST API chuẩn hóa cho ứng dụng phía người dùng.
-3. **Tầng Giao Diện Người Dùng (Frontend Layer):** Ứng dụng Web **React 19 + TypeScript + Vite + Tailwind CSS** với giao diện hiện đại, trực quan, hỗ trợ vẽ biểu đồ đường đa trục theo chuỗi thời gian thực, bảng nhật ký phân trang động và tìm kiếm dữ liệu nâng cao.
+* Họ và tên: Đặng Trần Hải Đăng
+* Mã số sinh viên: B23DCAT036
+* Lớp hành chính: D23CQAT01-B
+* Khoa: An toàn thông tin
+* Giảng viên hướng dẫn: TS. Nguyễn Quốc Uy
+* Cơ sở đào tạo: Học viện Công nghệ Bưu chính Viễn thông
+* Học phần: Thực hành Internet of Things
 
 ---
 
-## 📁 Cấu Trúc Thư Mục Dự Án
+## Giới thiệu dự án
 
-Dự án được tổ chức tách biệt, rõ ràng theo chuẩn module hóa:
+Hệ thống giám sát và điều khiển nhà thông minh Smart Home IoT là giải pháp quan trắc môi trường và quản lý thiết bị toàn diện, được tích hợp chặt chẽ qua 3 tầng công nghệ:
+
+1. Tầng phần cứng: Vi điều khiển ESP32-S3 Lolin S3 Mini giao tiếp với cảm biến nhiệt độ và độ ẩm DHT11, cảm biến cường độ ánh sáng số BH1750 qua giao thức I2C, đồng thời điều khiển 3 thiết bị chấp hành gồm quạt làm mát, máy hút ẩm và đèn ngoài trời.
+2. Tầng dịch vụ máy chủ: Máy chủ Node.js và Express đóng vai trò cầu nối xử lý giữa giao thức truyền thông MQTT tại máy chủ broker.emqx.io cổng 1883 với cơ sở dữ liệu quan hệ MySQL dang_iot, đồng thời cung cấp hệ thống REST API chuẩn hóa cho ứng dụng người dùng.
+3. Tầng giao diện người dùng: Ứng dụng web xây dựng trên nền tảng React 19, TypeScript, Vite và Tailwind CSS với giao diện hiện đại, hỗ trợ trực quan hóa biểu đồ chuỗi thời gian thực, bảng nhật ký phân trang và tìm kiếm số liệu nâng cao.
+
+---
+
+## Cấu trúc thư mục dự án
+
+Dự án được tổ chức tách biệt và module hóa theo các thành phần:
 
 ```text
 BaiThucHanh3/
-├── database_setup.sql                       # Tệp kịch bản khởi tạo cơ sở dữ liệu MySQL
-├── PhanCung/                                # MÃ NGUỒN PHẦN CỨNG ESP32 (PLATFORMIO)
-│   ├── platformio.ini                       # Cấu hình board Lolin S3 Mini và các thư viện
+├── database_setup.sql                       # Kịch bản khởi tạo cơ sở dữ liệu MySQL
+├── PhanCung/                                # Mã nguồn phần cứng ESP32 với PlatformIO
+│   ├── platformio.ini                       # Cấu hình mạch Lolin S3 Mini và các thư viện
 │   └── src/
-│       ├── main.cpp                         # Mã nguồn C++ xử lý đọc cảm biến, WiFi, MQTT
-│       └── secrets.h                        # Khai báo thông số mạng và xác thực MQTT
+│       ├── main.cpp                         # Mã nguồn C++ đọc cảm biến, kết nối WiFi và MQTT
+│       └── secrets.h                        # Khai báo thông số mạng và định danh MQTT
 │
-└── PhanMem/                                 # MÃ NGUỒN PHẦN MỀM HỆ THỐNG
-    ├── BE/                                  # BACKEND REST API & MQTT-TO-MYSQL BRIDGE
+└── PhanMem/                                 # Mã nguồn phần mềm hệ thống
+    ├── BE/                                  # Máy chủ Backend REST API và cầu nối MQTT
     │   ├── config/
-    │   │   ├── mqtt.js                      # Cấu hình kết nối MQTT Broker và định nghĩa Topics
-    │   │   └── mysql.js                     # Quản lý MySQL Connection Pool (mysql2/promise)
+    │   │   ├── mqtt.js                      # Cấu hình kết nối MQTT Broker và các topic
+    │   │   └── mysql.js                     # Quản lý kết nối MySQL với mysql2 promise
     │   ├── handlers/
-    │   │   └── mqttHandler.js               # Xử lý nhận tin MQTT, Heartbeat và ACK thiết bị
+    │   │   └── mqttHandler.js               # Xử lý gói tin MQTT, kiểm tra kết nối và phản hồi
     │   ├── routes/
-    │   │   └── api.js                       # Định nghĩa các REST API Endpoints
+    │   │   └── api.js                       # Định nghĩa các điểm cuối REST API
     │   ├── services/
-    │   │   ├── mysqlDeviceService.js        # Nghiệp vụ thiết bị và nhật ký điều khiển
-    │   │   ├── mysqlSensorService.js        # Nghiệp vụ cảm biến và bộ đệm số liệu
-    │   │   └── mysqlUserService.js          # Nghiệp vụ hồ sơ sinh viên và xác thực Login
+    │   │   ├── mysqlDeviceService.js        # Xử lý dữ liệu thiết bị và nhật ký điều khiển
+    │   │   ├── mysqlSensorService.js        # Xử lý dữ liệu cảm biến và bộ đệm số liệu
+    │   │   └── mysqlUserService.js          # Xử lý hồ sơ người dùng và xác thực đăng nhập
     │   ├── utils/
-    │   │   └── dateHelper.js                # Xử lý bộ lọc khoảng thời gian SQL
-    │   ├── .env                             # Biến môi trường (DB Host, Port, MQTT Broker)
-    │   ├── .env.example                     # Bản mẫu biến môi trường
-    │   ├── index.js                         # Điểm khởi chạy chính máy chủ Express (Port 5000)
-    │   └── package.json                     # Danh sách phụ thuộc Backend
+    │   │   └── dateHelper.js                # Tiện ích lọc khoảng thời gian truy vấn SQL
+    │   ├── .env                             # Biến môi trường cấu hình cổng và cơ sở dữ liệu
+    │   ├── .env.example                     # Tệp mẫu cấu hình biến môi trường
+    │   ├── index.js                         # Điểm khởi chạy máy chủ Express tại cổng 5000
+    │   └── package.json                     # Danh mục thư viện phụ thuộc của Backend
     │
-    └── FE/                                  # FRONTEND WEB DASHBOARD (REACT + TS + VITE)
-        ├── public/                          # Tài nguyên tĩnh (ảnh đại diện anhthe.png, truong.png)
+    └── FE/                                  # Giao diện web Frontend với React và Vite
+        ├── public/                          # Tài nguyên ảnh tĩnh
         ├── src/
-        │   ├── components/                  # Thành phần giao diện dùng chung
-        │   │   └── Common/                  # Button, Card, Table, Pagination, Toast, Loading
+        │   ├── components/                  # Các thành phần giao diện tái sử dụng
+        │   │   └── Common/                  # Nút bấm, thẻ hiển thị, bảng, phân trang, thông báo
         │   ├── contexts/
-        │   │   └── AppContext.tsx           # Context quản lý State toàn cục & đồng bộ dữ liệu
+        │   │   └── AppContext.tsx           # Quản lý trạng thái toàn cục và đồng bộ dữ liệu
         │   ├── layouts/
         │   │   ├── MainLayout.tsx           # Bố cục khung sườn giao diện chính
-        │   │   ├── Navbar.tsx               # Thanh điều hướng trên, cờ ESP32 Online & đồng hồ
-        │   │   └── Sidebar.tsx              # Menu chuyển trang và nút Đăng xuất
+        │   │   ├── Navbar.tsx               # Thanh điều hướng trên, trạng thái kết nối và đồng hồ
+        │   │   └── Sidebar.tsx              # Menu chuyển trang và nút đăng xuất
         │   ├── pages/
-        │   │   ├── Dashboard.tsx            # Trang chủ: Thẻ đo, công tắc thiết bị, biểu đồ Chart.js
-        │   │   ├── Sensor.tsx               # Trang nhật ký cảm biến, tìm kiếm Regex & phân trang
-        │   │   ├── History.tsx              # Trang lịch sử bật/tắt thiết bị & bộ lọc 4 tiêu chí
-        │   │   ├── Profile.tsx              # Trang hồ sơ sinh viên PTIT & liên kết dự án
-        │   │   └── Login.tsx                # Trang xác thực đăng nhập bảo mật
+        │   │   ├── Dashboard.tsx            # Trang chủ hiển thị thông số đo và biểu đồ
+        │   │   ├── Sensor.tsx               # Trang nhật ký cảm biến, tìm kiếm và phân trang
+        │   │   ├── History.tsx              # Trang lịch sử điều khiển thiết bị
+        │   │   ├── Profile.tsx              # Trang hồ sơ sinh viên và liên kết dự án
+        │   │   └── Login.tsx                # Trang đăng nhập xác thực người dùng
         │   ├── services/api/
-        │   │   └── apiService.ts            # Tầng giao tiếp HTTP REST API tới Backend
+        │   │   └── apiService.ts            # Tầng giao tiếp REST API tới Backend
         │   ├── types/
-        │   │   └── index.ts                 # Định nghĩa TypeScript Interfaces toàn hệ thống
+        │   │   └── index.ts                 # Định nghĩa kiểu dữ liệu TypeScript
         │   ├── utils/
-        │   │   └── date.ts                  # Tiện ích định dạng ngày giờ chuẩn YYYY-MM-DD HH:mm:ss
-        │   ├── App.tsx                      # Cấu hình Routes và Router Guard
-        │   ├── main.tsx                     # Điểm gắn kết React DOM
-        │   └── index.css                    # Cấu hình Tailwind CSS, animation và glow effects
-        ├── index.html                       # HTML gốc của ứng dụng Web
-        ├── package.json                     # Danh mục dependencies Frontend
-        ├── tsconfig.json                    # Cấu hình TypeScript compiler
-        └── vite.config.ts                   # Cấu hình đóng gói Vite
+        │   │   └── date.ts                  # Tiện ích định dạng ngày giờ chuẩn
+        │   ├── App.tsx                      # Định tuyến các trang và bảo vệ phiên đăng nhập
+        │   ├── main.tsx                     # Điểm gắn kết React vào DOM
+        │   └── index.css                    # Định kiểu giao diện với Tailwind CSS
+        ├── index.html                       # Tệp HTML gốc của ứng dụng web
+        ├── package.json                     # Danh mục thư viện phụ thuộc của Frontend
+        ├── tsconfig.json                    # Cấu hình trình biên dịch TypeScript
+        └── vite.config.ts                   # Cấu hình công cụ đóng gói Vite
 ```
 
 ---
 
-## 🏛️ Kiến Trúc Hệ Thống (System Architecture)
+## Kiến trúc hệ thống
 
 ```mermaid
 flowchart TD
-    subgraph HARDWARE["Phần Cứng (ESP32-S3 Lolin S3 Mini)"]
-        DHT["Cảm biến DHT11<br/>(GPIO 8)"] --> ESP["ESP32 Vi Điều Khiển"]
-        BH["Cảm biến BH1750 (I2C)<br/>(SDA: 10, SCL: 9)"] --> ESP
-        ESP --> LED1["LED 1: Quạt (GPIO 11)"]
-        ESP --> LED2["LED 2: Máy hút ẩm (GPIO 12)"]
-        ESP --> LED3["LED 3: Đèn ngoài trời (GPIO 7)"]
+    subgraph HARDWARE["Phần cứng: Mạch vi điều khiển ESP32-S3"]
+        DHT["Cảm biến nhiệt độ, độ ẩm DHT11<br/>Chân GPIO 8"] --> ESP["Vi điều khiển ESP32-S3"]
+        BH["Cảm biến ánh sáng BH1750 I2C<br/>SDA: 10, SCL: 9"] --> ESP
+        ESP --> LED1["LED 1: Quạt làm mát<br/>Chân GPIO 11"]
+        ESP --> LED2["LED 2: Máy hút ẩm<br/>Chân GPIO 12"]
+        ESP --> LED3["LED 3: Đèn ngoài trời<br/>Chân GPIO 7"]
     end
 
-    subgraph BROKER["MQTT Broker (broker.emqx.io:1883)"]
+    subgraph BROKER["Máy chủ MQTT Broker: broker.emqx.io"]
         T_SENSOR["Topic: Sensor"]
         T_CMD["Topic: Device_control"]
         T_ACK["Topic: Device_respond"]
     end
 
-    subgraph BACKEND["Backend Server (Node.js / Express :5000)"]
-        MQTT_CLIENT["MQTT Client & Heartbeat Monitor"]
-        REST_API["REST API Router (/api/*)"]
-        SERVICES["Sensor / Device / User Services"]
+    subgraph BACKEND["Máy chủ Backend: Node.js Express cổng 5000"]
+        MQTT_CLIENT["MQTT Client và giám sát kết nối"]
+        REST_API["Bộ định tuyến REST API"]
+        SERVICES["Dịch vụ xử lý cảm biến, thiết bị, người dùng"]
     end
 
-    subgraph DATABASE["Cơ Sở Dữ Liệu (MySQL :3306)"]
-        DB[("Database: dang_iot<br/>• devices<br/>• sensors<br/>• sensor_logs<br/>• device_logs<br/>• users")]
+    subgraph DATABASE["Cơ sở dữ liệu MySQL: dang_iot"]
+        DB[("Bảng dữ liệu<br/>devices, sensors, sensor_logs, device_logs, users")]
     end
 
-    subgraph FRONTEND["Frontend Web Dashboard (React + TS :5173)"]
-        UI_DASH["Dashboard: Cards + Biểu đồ Chart.js"]
-        UI_SENS["Sensor: Bảng đo + Tìm kiếm Regex"]
-        UI_HIST["History: Lịch sử thao tác + Auto-poll"]
-        UI_PROF["Profile & Login: Xác thực người dùng"]
+    subgraph FRONTEND["Giao diện web: React Vite cổng 5173"]
+        UI_DASH["Bảng điều khiển và biểu đồ trực quan"]
+        UI_SENS["Nhật ký quan trắc cảm biến"]
+        UI_HIST["Lịch sử điều khiển thiết bị"]
+        UI_PROF["Hồ sơ người dùng và đăng nhập"]
     end
 
-    ESP -->|Publish dữ liệu 3s/lần| T_SENSOR
+    ESP -->|Gửi dữ liệu 3 giây một lần| T_SENSOR
     T_SENSOR --> MQTT_CLIENT
-    T_ACK -->|Nhận phản hồi ACK| MQTT_CLIENT
-    ESP -->|Publish trạng thái mới| T_ACK
+    T_ACK -->|Nhận phản hồi xác nhận| MQTT_CLIENT
+    ESP -->|Cập nhật trạng thái mới| T_ACK
     MQTT_CLIENT -->|Gửi lệnh điều khiển| T_CMD
     T_CMD --> ESP
 
@@ -148,7 +149,7 @@ flowchart TD
     REST_API --> SERVICES
     SERVICES <--> DB
 
-    FRONTEND <-->|REST API HTTP| REST_API
+    FRONTEND <-->|Giao tiếp qua REST API HTTP| REST_API
 ```
 
 ---
@@ -171,7 +172,7 @@ Hệ thống sử dụng mạch vi điều khiển ESP32-S3 phiên bản Lolin S
 
 ## Thiết kế cơ sở dữ liệu chuẩn hóa MySQL
 
-Hệ thống triển khai trên cơ sở dữ liệu quan hệ MySQL mang tên `dang_iot`. Dữ liệu được chuẩn hóa theo dạng 3NF và phân bổ thành 5 bảng:
+Hệ thống triển khai trên cơ sở dữ liệu quan hệ MySQL mang tên `dang_iot`. Dữ liệu được chuẩn hóa theo chuẩn 3NF và phân bổ thành 5 bảng:
 
 ### Bảng devices - Danh mục thiết bị điều khiển
 Lưu trữ danh sách các thiết bị đầu ra trong hệ thống:
@@ -413,4 +414,3 @@ Nhấn vào biểu tượng **PlatformIO: Serial Monitor** trên thanh trạng t
    http://localhost:5173
    ```
 5. Đăng nhập với tài khoản quản trị `ADMIN` và mật khẩu `123456` để bắt đầu quản lý và giám sát hệ thống.
-
