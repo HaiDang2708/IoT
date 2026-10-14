@@ -160,35 +160,35 @@ async function getMergedHistory(dateString = null, startTime = null, endTime = n
       params.push(`%${searchTime.trim()}%`, `%${searchTime.trim()}%`);
     }
 
-    // 3. Lọc theo thiết bị
+    // 3. Lọc theo thiết bị (khớp chính xác tên hoặc mã thiết bị)
     if (deviceFilter && deviceFilter !== 'ALL' && deviceFilter !== 'Tất cả thiết bị') {
-      conditions.push(`(d.ten_thiet_bi LIKE ? OR d.ma_thiet_bi = ?)`);
-      params.push(`%${deviceFilter}%`, deviceFilter);
+      conditions.push(`(d.ten_thiet_bi = ? OR d.ma_thiet_bi = ?)`);
+      params.push(deviceFilter, deviceFilter);
     }
 
-    // 4. Lọc theo hành động (on / off)
+    // 4. Lọc theo hành động (ON / OFF)
     if (actionFilter && actionFilter !== 'ALL' && actionFilter !== 'Tất cả hành động') {
-      const actVal = (actionFilter.toLowerCase() === 'on' || actionFilter === '1');
+      const actVal = (actionFilter.toUpperCase() === 'ON' || actionFilter === '1');
       conditions.push(`dl.trang_thai_moi = ?`);
       params.push(actVal);
     }
 
-    // 5. Lọc theo trạng thái (on, off, loading)
+    // 5. Lọc theo trạng thái (ON, OFF, LOADING, FAILED)
     if (statusFilter && statusFilter !== 'ALL' && statusFilter !== 'Tất cả trạng thái') {
-      const stLower = statusFilter.toLowerCase();
-      if (stLower === 'loading') {
+      const stUpper = statusFilter.toUpperCase();
+      if (stUpper === 'LOADING') {
         conditions.push(`(dl.ket_qua = 'LOADING' OR dl.ket_qua = 'PENDING')`);
-      } else if (stLower === 'on') {
+      } else if (stUpper === 'ON') {
         conditions.push(`(dl.ket_qua = 'SUCCESS' AND dl.trang_thai_moi = 1)`);
-      } else if (stLower === 'off') {
+      } else if (stUpper === 'OFF') {
         conditions.push(`(dl.ket_qua = 'SUCCESS' AND dl.trang_thai_moi = 0)`);
-      } else if (stLower === 'failed') {
+      } else if (stUpper === 'FAILED') {
         conditions.push(`dl.ket_qua = 'FAILED'`);
       }
     }
 
     const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    params.push(200); // Lấy tối đa 200 bản ghi mới nhất
+    params.push(1000); // Lấy tối đa 1000 bản ghi mới nhất
 
     const devSql = `
       SELECT 
@@ -213,18 +213,18 @@ async function getMergedHistory(dateString = null, startTime = null, endTime = n
     
     devLogs.forEach(row => {
       const isON = !!row.trang_thai_moi;
-      const actionReq = isON ? 'on' : 'off';
+      const actionReq = isON ? 'ON' : 'OFF';
       const isPending = (row.ket_qua === 'LOADING' || row.ket_qua === 'PENDING');
       const isFailed = (row.ket_qua === 'FAILED');
       
-      let statusResult = isPending ? 'loading' : isFailed ? 'failed' : actionReq;
+      let statusResult = isPending ? 'LOADING' : isFailed ? 'FAILED' : actionReq;
 
       list.push({
         id: row.id,
         ten_thiet_bi: row.ten_thiet_bi || 'Thiết bị',
         ma_thiet_bi: row.ma_thiet_bi,
-        hanh_dong: actionReq, // 'on' hoặc 'off'
-        trang_thai: statusResult, // 'on', 'off', hoặc 'loading'
+        hanh_dong: actionReq, // 'ON' hoặc 'OFF'
+        trang_thai: statusResult, // 'ON', 'OFF', 'LOADING', hoặc 'FAILED'
         thoi_gian_gui: row.thoi_gian_gui || '',
         thoi_gian_phan_hoi: isPending ? 'Đang chờ...' : (row.thoi_gian_phan_hoi || (isFailed ? 'Thất bại' : row.thoi_gian_gui)),
         // Bổ trợ:

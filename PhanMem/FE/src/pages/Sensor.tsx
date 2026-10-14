@@ -119,7 +119,7 @@ export const SensorPage: React.FC = () => {
 
   const fetchLogs = async (crit?: SearchCriteria, val?: string) => {
     setIsLoading(true);
-    const limit = 500;
+    const limit = 2000;
     const dbLogs = await apiService.getRawSensorLogs(
       limit,
       undefined,
@@ -183,10 +183,12 @@ export const SensorPage: React.FC = () => {
   const isSearchActive = activeQuery.value.trim().length > 0;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <Card 
         title="Lịch sử cảm biến" 
         description="Danh sách chi tiết dữ liệu"
+        className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        contentClassName="flex-1 min-h-0 p-4 md:p-5 overflow-hidden flex flex-col"
         headerActions={
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
             {/* 1. Thanh tìm kiếm */}
@@ -269,22 +271,17 @@ export const SensorPage: React.FC = () => {
           </div>
         }
       >
-        <div className="flex-1 flex flex-col justify-between">
-          <Table<RawSensorLog>
-            columns={TABLE_COLUMNS}
-            data={paginatedLogs}
-            isLoading={isLoading}
-            emptyText={isSearchActive ? 'Không tìm thấy kết quả phù hợp với từ khóa' : 'Không có dữ liệu cảm biến'}
-          />
+        <div className="flex-1 min-h-0 flex flex-col justify-between overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <Table<RawSensorLog>
+              columns={TABLE_COLUMNS}
+              data={paginatedLogs}
+              isLoading={isLoading}
+              emptyText={isSearchActive ? 'Không tìm thấy kết quả phù hợp với từ khóa' : 'Không có dữ liệu cảm biến'}
+            />
+          </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs font-semibold text-slate-500">
-              Tổng số <span className="font-bold text-slate-800">{logs.length}</span> bản ghi
-              {isSearchActive && (
-                <span className="ml-1 text-emerald-600">(đã áp dụng bộ lọc)</span>
-              )}
-            </div>
-
+          <div className="mt-2 pt-2 border-t border-slate-100 shrink-0">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

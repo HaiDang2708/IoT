@@ -41,7 +41,7 @@ const validateTimeInput = (value: string): string | null => {
   return null;
 };
 
-// Cấu hình bảng cố định (Giữ nguyên 100% giao diện Bài 3)
+// Cấu hình bảng cố định (6 cột chuẩn)
 const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
   {
     key: 'id',
@@ -59,14 +59,14 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
     header: 'Hành động',
     className: 'w-32',
     render: (row) => {
-      const isON = String(row.hanh_dong).toLowerCase() === 'on';
+      const isON = String(row.hanh_dong).toUpperCase() === 'ON';
       return (
         <span
           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border shadow-xs ${
             isON ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
           }`}
         >
-          {row.hanh_dong}
+          {isON ? 'ON' : 'OFF'}
         </span>
       );
     },
@@ -76,32 +76,32 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
     header: 'Trạng thái',
     className: 'w-36',
     render: (row) => {
-      const st = String(row.trang_thai).toLowerCase();
-      if (st === 'loading') {
+      const st = String(row.trang_thai).toUpperCase();
+      if (st === 'LOADING' || st === 'PENDING') {
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 animate-pulse shadow-xs">
             <Loader2 className="w-3 h-3 animate-spin text-amber-600 shrink-0" />
-            loading
+            LOADING
           </span>
         );
       }
-      if (st === 'on') {
+      if (st === 'ON') {
         return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
-            on
+            ON
           </span>
         );
       }
-      if (st === 'off') {
+      if (st === 'OFF') {
         return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 shadow-xs">
-            off
+            OFF
           </span>
         );
       }
       return (
         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 shadow-xs">
-          failed
+          FAILED
         </span>
       );
     },
@@ -121,6 +121,7 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
     render: (row) => {
       const isPending =
         row.trang_thai === 'loading' ||
+        row.trang_thai === 'LOADING' ||
         row.status === 'PENDING' ||
         row.status === 'LOADING' ||
         !row.thoi_gian_phan_hoi;
@@ -132,34 +133,6 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
           }`}
         >
           {isPending ? 'Đang chờ ESP32...' : row.thoi_gian_phan_hoi}
-        </span>
-      );
-    },
-  },
-  {
-    key: 'status',
-    header: 'Kết quả',
-    className: 'w-32',
-    render: (row) => {
-      const st = (row.status || '').toUpperCase();
-      if (st === 'SUCCESS') {
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-emerald-100/70 text-emerald-800">
-            SUCCESS
-          </span>
-        );
-      }
-      if (st === 'LOADING' || st === 'PENDING') {
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 animate-pulse">
-            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            PENDING
-          </span>
-        );
-      }
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800">
-          FAILED
         </span>
       );
     },
@@ -194,11 +167,11 @@ export const HistoryPage: React.FC = () => {
   };
 
   const deviceOptions = useMemo(() => {
-    const list = ['Quạt', 'Máy hút ẩm', 'Đèn ngoài trời', 'Đèn'];
-    devices.forEach((d) => {
-      if (d.device_name && !list.includes(d.device_name)) list.push(d.device_name);
-    });
-    return Array.from(new Set(list));
+    // Chỉ lấy trực tiếp từ danh mục thiết bị thực tế trong CSDL
+    const names = devices
+      .map((d) => d.device_name?.trim())
+      .filter((name): name is string => Boolean(name));
+    return Array.from(new Set(names));
   }, [devices]);
 
   const fetchHistory = useCallback(async (showLoading = true) => {
@@ -228,7 +201,7 @@ export const HistoryPage: React.FC = () => {
   // Tự động làm mới 1.5s/lần khi có mục đang chờ phản hồi từ ESP32
   useEffect(() => {
     const hasPending = historyLogs.some(
-      (item) => item.trang_thai === 'loading' || item.status === 'PENDING' || item.status === 'LOADING'
+      (item) => item.trang_thai === 'loading' || item.trang_thai === 'LOADING' || item.status === 'PENDING' || item.status === 'LOADING'
     );
     if (!hasPending) return;
 
@@ -245,18 +218,38 @@ export const HistoryPage: React.FC = () => {
     setValidationError(validateTimeInput(val));
   };
 
+  // Lọc ngay khi đổi Thiết bị
+  const handleDeviceChange = (dev: string) => {
+    setSelectedDevice(dev);
+    setAppliedFilters((prev) => ({ ...prev, device: dev }));
+    setCurrentPage(1);
+  };
+
+  // Lọc ngay khi đổi Hành động
+  const handleActionChange = (act: string) => {
+    setSelectedAction(act);
+    setAppliedFilters((prev) => ({ ...prev, action: act }));
+    setCurrentPage(1);
+  };
+
+  // Lọc ngay khi đổi Trạng thái
+  const handleStatusChange = (st: string) => {
+    setSelectedStatus(st);
+    setAppliedFilters((prev) => ({ ...prev, status: st }));
+    setCurrentPage(1);
+  };
+
+  // Áp dụng bộ lọc thời gian
   const handleApplyFilters = () => {
     const err = validateTimeInput(timeInput);
     if (err) {
       setValidationError(err);
       return;
     }
-    setAppliedFilters({
+    setAppliedFilters((prev) => ({
+      ...prev,
       time: timeInput.trim(),
-      device: selectedDevice,
-      action: selectedAction,
-      status: selectedStatus,
-    });
+    }));
     setCurrentPage(1);
   };
 
@@ -291,10 +284,12 @@ export const HistoryPage: React.FC = () => {
   const totalPages = Math.ceil(historyLogs.length / itemsPerPage) || 1;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <Card
         title="Lịch sử hoạt động"
         description="Nhật ký thao tác điều khiển thiết bị"
+        className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        contentClassName="flex-1 min-h-0 p-4 md:p-5 overflow-hidden flex flex-col"
         headerActions={
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
             {/* 1. Lọc theo thời gian */}
@@ -332,11 +327,11 @@ export const HistoryPage: React.FC = () => {
               )}
             </div>
 
-            {/* 2. Lọc Thiết bị */}
+            {/* 2. Lọc Thiết bị (lấy từ CSDL, lọc ngay khi chọn) */}
             <div className="relative">
               <select
                 value={selectedDevice}
-                onChange={(e) => setSelectedDevice(e.target.value)}
+                onChange={(e) => handleDeviceChange(e.target.value)}
                 className="appearance-none h-10 pl-9 pr-8 bg-white border border-slate-200 hover:border-slate-300 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 cursor-pointer shadow-sm transition-all"
               >
                 <option value="ALL">Tất cả thiết bị</option>
@@ -350,38 +345,39 @@ export const HistoryPage: React.FC = () => {
               <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
 
-            {/* 3. Lọc Hành động */}
+            {/* 3. Lọc Hành động (ON, OFF thuần Anh, lọc ngay khi chọn) */}
             <div className="relative">
               <select
                 value={selectedAction}
-                onChange={(e) => setSelectedAction(e.target.value)}
+                onChange={(e) => handleActionChange(e.target.value)}
                 className="appearance-none h-10 pl-9 pr-8 bg-white border border-slate-200 hover:border-slate-300 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 cursor-pointer shadow-sm transition-all"
               >
                 <option value="ALL">Tất cả hành động</option>
-                <option value="on">Bật (ON)</option>
-                <option value="off">Tắt (OFF)</option>
+                <option value="ON">ON</option>
+                <option value="OFF">OFF</option>
               </select>
               <Zap className="absolute left-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
               <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
 
-            {/* 4. Lọc Trạng thái */}
+            {/* 4. Lọc Trạng thái (ON, OFF, LOADING, FAILED thuần Anh, lọc ngay khi chọn) */}
             <div className="relative">
               <select
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
+                onChange={(e) => handleStatusChange(e.target.value)}
                 className="appearance-none h-10 pl-9 pr-8 bg-white border border-slate-200 hover:border-slate-300 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 cursor-pointer shadow-sm transition-all"
               >
                 <option value="ALL">Tất cả trạng thái</option>
-                <option value="on">Bật thành công (ON)</option>
-                <option value="off">Tắt thành công (OFF)</option>
-                <option value="loading">Đang chờ (LOADING)</option>
+                <option value="ON">ON</option>
+                <option value="OFF">OFF</option>
+                <option value="LOADING">LOADING</option>
+                <option value="FAILED">FAILED</option>
               </select>
               <Activity className="absolute left-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
               <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
 
-            {/* 5. Nút Lọc */}
+            {/* 5. Nút Lọc (áp dụng khi nhập thời gian) */}
             <button
               type="button"
               onClick={handleApplyFilters}
@@ -411,26 +407,21 @@ export const HistoryPage: React.FC = () => {
           </div>
         }
       >
-        <div className="flex-1 flex flex-col justify-between">
-          <Table<MergedHistoryItem>
-            columns={TABLE_COLUMNS}
-            data={paginatedLogs}
-            isLoading={isLoading}
-            emptyText={
-              isFilterActive
-                ? 'Không tìm thấy kết quả phù hợp với bộ lọc'
-                : 'Không có dữ liệu lịch sử thao tác thiết bị'
-            }
-          />
+        <div className="flex-1 min-h-0 flex flex-col justify-between overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <Table<MergedHistoryItem>
+              columns={TABLE_COLUMNS}
+              data={paginatedLogs}
+              isLoading={isLoading}
+              emptyText={
+                isFilterActive
+                  ? 'Không tìm thấy kết quả phù hợp với bộ lọc'
+                  : 'Không có dữ liệu lịch sử thao tác thiết bị'
+              }
+            />
+          </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs font-semibold text-slate-500">
-              Tổng số <span className="font-bold text-slate-800">{historyLogs.length}</span> bản ghi
-              {isFilterActive && (
-                <span className="ml-1 text-emerald-600">(đã áp dụng bộ lọc)</span>
-              )}
-            </div>
-
+          <div className="mt-2 pt-2 border-t border-slate-100 shrink-0">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

@@ -175,7 +175,7 @@ export const ProfilePage: React.FC = () => {
   ], [user, birthday]);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col justify-between space-y-3.5 animate-in fade-in duration-200">
+    <div className="flex-1 min-h-0 flex flex-col justify-between space-y-3.5 overflow-y-auto animate-in fade-in duration-200">
       {/* 1. BANNER NGANG VỚI ẢNH TRƯỜNG PTIT */}
       <div className="h-32 sm:h-36 rounded-2xl relative overflow-hidden flex items-center justify-between px-6 sm:px-8 shadow-sm border border-slate-200/60 shrink-0">
         <img
