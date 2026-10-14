@@ -136,18 +136,18 @@ flowchart TD
         UI_PROF["Profile & Login: Xác thực người dùng"]
     end
 
-    ESP -- "Publish dữ liệu 3s/lần" --> T_SENSOR
+    ESP -->|Publish dữ liệu 3s/lần| T_SENSOR
     T_SENSOR --> MQTT_CLIENT
-    MQTT_CLIENT -- "Nhận phản hồi ACK" <-- T_ACK
-    ESP -- "Publish trạng thái mới" --> T_ACK
-    MQTT_CLIENT -- "Gửi lệnh điều khiển" --> T_CMD
+    T_ACK -->|Nhận phản hồi ACK| MQTT_CLIENT
+    ESP -->|Publish trạng thái mới| T_ACK
+    MQTT_CLIENT -->|Gửi lệnh điều khiển| T_CMD
     T_CMD --> ESP
 
     MQTT_CLIENT --> SERVICES
     REST_API --> SERVICES
     SERVICES <--> DB
 
-    FRONTEND <-->|"HTTP GET / PATCH / POST / PUT"| REST_API
+    FRONTEND <-->|REST API HTTP| REST_API
 ```
 
 ---
