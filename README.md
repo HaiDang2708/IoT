@@ -152,20 +152,6 @@ flowchart TD
 
 ---
 
-## 🔌 Đặc Tả Phần Cứng (Hardware Specification)
-
-### 1. Sơ đồ nối chân vi điều khiển ESP32 (Lolin S3 Mini)
-
-| Thành phần | Module / Linh kiện | Chân ESP32 | Giao thức / Chức năng |
-| :--- | :--- | :---: | :--- |
-| **Cảm biến nhiệt độ - độ ẩm** | DHT11 | **GPIO 8** | 1-Wire Digital Signal |
-| **Cảm biến cường độ ánh sáng** | BH1750 | **SDA: GPIO 10<br/>SCL: GPIO 9** | Giao tiếp số I2C (Chuẩn độ phân giải cao `CONTINUOUS_HIGH_RES_MODE`) |
-| **Cơ cấu chấp hành 1 (Quạt)** | LED 1 (Xanh dương / Rơ-le) | **GPIO 11** | Ngõ ra số (OUTPUT), HIGH = BẬT, LOW = TẮT |
-| **Cơ cấu chấp hành 2 (Máy hút ẩm)** | LED 2 (Vàng / Rơ-le) | **GPIO 12** | Ngõ ra số (OUTPUT), HIGH = BẬT, LOW = TẮT |
-| **Cơ cấu chấp hành 3 (Đèn ngoài trời)** | LED 3 (Đỏ / Rơ-le) | **GPIO 7** | Ngõ ra số (OUTPUT), HIGH = BẬT, LOW = TẮT |
-
----
-
 ## 📡 Đặc Tả Giao Thức MQTT & Topics
 
 Hệ thống sử dụng MQTT Broker công cộng **`broker.emqx.io`** trên cổng **`1883`** (TCP) với **3 Topic cốt lõi**:
@@ -224,85 +210,6 @@ Hệ thống sử dụng MQTT Broker công cộng **`broker.emqx.io`** trên c�
   ```bash
   mosquitto_pub -h broker.emqx.io -p 1883 -t "Device_control" -m "{\"LED1\":\"OFF\"}"
   ```
-
----
-
-## 🗄️ Thiết Kế Cơ Sở Dữ Liệu Chuẩn Hóa MySQL (`dang_iot`)
-
-Hệ thống triển khai trên CSDL MySQL chuẩn hóa 3NF, lưu trữ tại `localhost:3306`:
-
-### 1. Bảng `devices` (Danh mục thiết bị đầu ra)
-| Cột | Kiểu dữ liệu | Ràng buộc | Diễn giải |
-| :--- | :--- | :--- | :--- |
-| `id` | `INT` | `AUTO_INCREMENT PRIMARY KEY` | Khóa chính |
-| `ma_thiet_bi` | `VARCHAR(50)` | `UNIQUE NOT NULL` | Mã định danh (`led1`, `led2`, `led3`) |
-| `ten_thiet_bi` | `VARCHAR(100)`| `NOT NULL` | Tên hiển thị (`QUẠT`, `MÁY HÚT ẨM`, `ĐÈN SÂN`) |
-| `chan_gpio` | `INT` | `NOT NULL` | Số chân GPIO vật lý nối trên ESP32 |
-| `trang_thai_hien_tai` | `BOOLEAN` | `DEFAULT FALSE` | Trạng thái hiện tại: `1` (ON) / `0` (OFF) |
-
-### 2. Bảng `sensors` (Danh mục cảm biến)
-| Cột | Kiểu dữ liệu | Ràng buộc | Diễn giải |
-| :--- | :--- | :--- | :--- |
-| `id` | `INT` | `AUTO_INCREMENT PRIMARY KEY` | Khóa chính |
-| `device_id` | `INT` | `FOREIGN KEY` $\rightarrow$ `devices(id)` | Liên kết tới thiết bị chứa |
-| `ma_cam_bien` | `VARCHAR(50)` | `UNIQUE NOT NULL` | `temp_sensor`, `hum_sensor`, `light_sensor` |
-| `ten_cam_bien` | `VARCHAR(100)`| `NOT NULL` | Tên cảm biến hiển thị |
-| `loai_cam_bien` | `VARCHAR(50)` | `NOT NULL` | Phân loại: `temperature`, `humidity`, `light` |
-| `don_vi` | `VARCHAR(20)` | `NOT NULL` | Đơn vị đo lường: `°C`, `%`, `lux` |
-
-### 3. Bảng `sensor_logs` (Nhật ký quan trắc môi trường)
-| Cột | Kiểu dữ liệu | Ràng buộc | Diễn giải |
-| :--- | :--- | :--- | :--- |
-| `id` | `INT` | `AUTO_INCREMENT PRIMARY KEY` | Khóa chính |
-| `sensor_id` | `INT` | `FOREIGN KEY` $\rightarrow$ `sensors(id)` | Cảm biến sinh số liệu |
-| `gia_tri` | `DECIMAL(6,1)`| `NOT NULL` | Giá trị đo được từ cảm biến |
-| `thoi_gian` | `DATETIME` | `DEFAULT CURRENT_TIMESTAMP` | Thời điểm ghi nhận vào CSDL |
-
-### 4. Bảng `device_logs` (Lịch sử thao tác điều khiển thiết bị)
-| Cột | Kiểu dữ liệu | Ràng buộc | Diễn giải |
-| :--- | :--- | :--- | :--- |
-| `id` | `INT` | `AUTO_INCREMENT PRIMARY KEY` | Khóa chính |
-| `device_id` | `INT` | `FOREIGN KEY` $\rightarrow$ `devices(id)` | Thiết bị được điều khiển |
-| `user_id` | `INT` | `FOREIGN KEY` $\rightarrow$ `users(id)` | Người thực hiện lệnh |
-| `trang_thai_moi`| `BOOLEAN` | `NOT NULL` | Trạng thái yêu cầu: `1` (Bật) / `0` (Tắt) |
-| `ket_qua` | `VARCHAR(20)` | `DEFAULT 'SUCCESS'` | Trạng thái: `SUCCESS`, `LOADING`, `FAILED` |
-| `thoi_gian` | `DATETIME` | `DEFAULT CURRENT_TIMESTAMP` | Thời điểm phát lệnh |
-| `thoi_gian_phan_hoi` | `DATETIME` | `NULL` | Thời điểm nhận được ACK từ ESP32 |
-
-### 5. Bảng `users` (Tài khoản & Hồ sơ sinh viên)
-Lưu trữ hồ sơ tác giả và tài khoản quản trị hệ thống (`ADMIN` / mật khẩu mã hóa bcrypt tương ứng `123456`).
-
----
-
-## 🚀 Danh Mục REST API Backend (`http://localhost:5000/api`)
-
-| Phương thức | Endpoint | Tham số Query / Body | Chức năng |
-| :---: | :--- | :--- | :--- |
-| `GET` | `/api/devices` | Không có | Lấy danh sách 3 thiết bị và cờ `isEsp32Online` |
-| `PATCH` | `/api/devices/:id` | `body: { isON, oldState, deviceCode, userId }` | Gửi lệnh bật/tắt thiết bị qua MQTT, chờ phản hồi và trả về kết quả |
-| `GET` | `/api/sensors` | `?type=logs&limit=25` | Lấy dữ liệu cảm biến ghép chuỗi (Pivot) vẽ biểu đồ Chart.js |
-| `GET` | `/api/sensors` | `?type=raw_logs&limit=150&searchCriteria=...&searchValue=...` | Lấy bảng nhật ký cảm biến chi tiết có lọc và tìm kiếm |
-| `GET` | `/api/system` | `?type=history&searchTime=...&deviceFilter=...` | Lấy lịch sử điều khiển thiết bị kèm 4 bộ lọc kết hợp |
-| `GET` | `/api/user` | `?username=ADMIN` | Lấy hồ sơ cá nhân sinh viên |
-| `PUT` | `/api/user` | `body: { ...thông tin sinh viên }` | Cập nhật hồ sơ sinh viên |
-| `POST` | `/api/auth/login` | `body: { username, password }` | Xác thực đăng nhập vào hệ thống |
-
----
-
-## 🎨 Điểm Nổi Bật Trên Giao Diện Web Dashboard
-
-1. **Giữ nguyên 100% bản sắc thiết kế Bài 3:** Toàn bộ hệ thống Card bo góc tròn cao cấp, bảng màu Tailwind gradient, icon xoay trạng thái động và hiệu ứng phát sáng mượt mà được giữ nguyên vẹn.
-2. **Thuật toán Ngắt Nét Biểu Đồ (Gap Detection):**
-   * Nếu khoảng cách giữa 2 điểm dữ liệu liên tiếp $> 8$ giây (do ESP32 mất nguồn hoặc ngắt mạng WiFi), hệ thống tự động chèn điểm `null` vào chuỗi dữ liệu của Chart.js.
-   * Biểu đồ sẽ ngắt quãng phản ánh đúng thực tế đứt kết nối, không vẽ đường thẳng nối giả tạo.
-3. **Theo Dõi ESP32 Heartbeat:**
-   * Badge trên Navbar tự động đổi trạng thái tức thời giữa `ESP32 Online` (xanh nhấp nháy) và `ESP32 Offline` (xám tĩnh) dựa trên tín hiệu phát sóng thực tế.
-4. **Bộ Lọc & Tìm Kiếm Kiểm Tra Regex Nâng Cao:**
-   * Ngăn chặn hoàn toàn việc nhập ký tự chữ cái khi đang tìm kiếm theo mốc thời gian hoặc giá trị cảm biến.
-   * Hỗ trợ tìm kiếm theo nhiều định dạng ngày (`YYYY-MM-DD`), giờ (`HH:mm:ss`) hoặc cả hai.
-5. **Cơ Chế Polling Thông Minh:**
-   * Tự động làm mới dữ liệu cảm biến định kỳ mỗi 3 giây khi người dùng đang xem trang.
-   * Tự động kích hoạt polling tốc độ cao 1.5 giây/lần khi phát hiện có lệnh đang ở trạng thái chờ phản hồi (`PENDING`/`LOADING`) để kịp thời cập nhật thời gian phản hồi từ mạch.
 
 ---
 
