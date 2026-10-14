@@ -41,6 +41,7 @@ Dự án được tổ chức tách biệt, rõ ràng theo chuẩn module hóa:
 
 ```text
 BaiThucHanh3/
+├── database_setup.sql                       # Tệp kịch bản khởi tạo cơ sở dữ liệu MySQL
 ├── PhanCung/                                # MÃ NGUỒN PHẦN CỨNG ESP32 (PLATFORMIO)
 │   ├── platformio.ini                       # Cấu hình board Lolin S3 Mini và các thư viện
 │   └── src/
@@ -152,14 +153,85 @@ flowchart TD
 
 ---
 
-## 📡 Đặc Tả Giao Thức MQTT & Topics
+## Đặc tả phần cứng
 
-Hệ thống sử dụng MQTT Broker công cộng **`broker.emqx.io`** trên cổng **`1883`** (TCP) với **3 Topic cốt lõi**:
+### Sơ đồ đấu nối chân vi điều khiển ESP32
 
-### 1. `Sensor` (Dữ liệu đo đạc cảm biến)
-* **Hướng truyền:** `ESP32` $\rightarrow$ `MQTT Broker` $\rightarrow$ `Backend`
-* **Chu kỳ phát:** Định kỳ mỗi **3000 ms (3 giây)**.
-* **Cấu trúc gói tin JSON:**
+Hệ thống sử dụng mạch vi điều khiển ESP32-S3 phiên bản Lolin S3 Mini để thu thập dữ liệu quan trắc từ các cảm biến và điều khiển các thiết bị đầu ra. Sơ đồ kết nối chi tiết giữa vi điều khiển và các ngoại vi:
+
+| Thiết bị và cảm biến | Linh kiện | Chân kết nối ESP32 | Giao thức và chức năng |
+| :--- | :--- | :---: | :--- |
+| Cảm biến nhiệt độ và độ ẩm | DHT11 | GPIO 8 | Chuẩn giao tiếp số 1 dây |
+| Cảm biến cường độ ánh sáng | BH1750 | SDA: GPIO 10, SCL: GPIO 9 | Chuẩn giao tiếp I2C độ phân giải cao |
+| Quạt làm mát | LED 1 | GPIO 11 | Điều khiển bật tắt số, mức cao kích hoạt |
+| Máy hút ẩm | LED 2 | GPIO 12 | Điều khiển bật tắt số, mức cao kích hoạt |
+| Đèn ngoài trời | LED 3 | GPIO 7 | Điều khiển bật tắt số, mức cao kích hoạt |
+
+---
+
+## Thiết kế cơ sở dữ liệu chuẩn hóa MySQL
+
+Hệ thống triển khai trên cơ sở dữ liệu quan hệ MySQL mang tên `dang_iot`. Dữ liệu được chuẩn hóa theo dạng 3NF và phân bổ thành 5 bảng:
+
+### Bảng devices - Danh mục thiết bị điều khiển
+Lưu trữ danh sách các thiết bị đầu ra trong hệ thống:
+
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | Khóa chính tự tăng | Định danh thiết bị |
+| ma_thiet_bi | VARCHAR(50) | Duy nhất, không rỗng | Mã định danh thiết bị như led1, led2, led3 |
+| ten_thiet_bi | VARCHAR(100) | Không rỗng | Tên hiển thị như Quạt, Máy hút ẩm, Đèn ngoài trời |
+| chan_gpio | INT | Không rỗng | Số chân GPIO vật lý trên mạch ESP32 |
+| trang_thai_hien_tai | BOOLEAN | Mặc định 0 | Trạng thái hiện tại gồm 1 là bật, 0 là tắt |
+
+### Bảng sensors - Danh mục cảm biến
+Lưu trữ thông tin và thuộc tính kỹ thuật của từng cảm biến:
+
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | Khóa chính tự tăng | Định danh cảm biến |
+| device_id | INT | Khóa ngoại tham chiếu devices | Thiết bị chứa hoặc liên kết |
+| ma_cam_bien | VARCHAR(50) | Duy nhất, không rỗng | Mã cảm biến như temp_sensor, hum_sensor, light_sensor |
+| ten_cam_bien | VARCHAR(100) | Không rỗng | Tên hiển thị của cảm biến |
+| loai_cam_bien | VARCHAR(50) | Không rỗng | Loại số liệu đo gồm temperature, humidity, light |
+| don_vi | VARCHAR(20) | Không rỗng | Đơn vị đo lường gồm °C, %, lux |
+
+### Bảng sensor_logs - Nhật ký dữ liệu cảm biến
+Lưu trữ các số đo môi trường định kỳ được gửi từ vi điều khiển:
+
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | Khóa chính tự tăng | Định danh bản ghi nhật ký |
+| sensor_id | INT | Khóa ngoại tham chiếu sensors | Cảm biến sinh số liệu |
+| gia_tri | DECIMAL(6,1) | Không rỗng | Giá trị thực tế đo được |
+| thoi_gian | DATETIME | Mặc định thời điểm hiện tại | Mốc thời gian ghi nhận bản ghi |
+
+### Bảng device_logs - Lịch sử điều khiển thiết bị
+Ghi nhận toàn bộ thao tác bật tắt thiết bị, người thực hiện và thời gian phản hồi thực tế từ mạch:
+
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | Khóa chính tự tăng | Định danh bản ghi lịch sử |
+| device_id | INT | Khóa ngoại tham chiếu devices | Thiết bị nhận lệnh |
+| user_id | INT | Khóa ngoại tham chiếu users | Tài khoản người dùng phát lệnh |
+| trang_thai_moi | BOOLEAN | Không rỗng | Trạng thái yêu cầu gồm 1 là bật, 0 là tắt |
+| ket_qua | VARCHAR(20) | Mặc định SUCCESS | Trạng thái xử lý gồm SUCCESS, LOADING, FAILED |
+| thoi_gian | DATETIME | Mặc định thời điểm hiện tại | Mốc thời gian gửi lệnh điều khiển |
+| thoi_gian_phan_hoi | DATETIME | Có thể rỗng | Mốc thời gian nhận xác nhận từ mạch ESP32 |
+
+### Bảng users - Tài khoản người dùng và hồ sơ sinh viên
+Lưu trữ thông tin xác thực tài khoản quản trị và hồ sơ chi tiết của sinh viên thực hiện đề tài gồm họ tên, ngày sinh, số điện thoại, email, mã số sinh viên, lớp hành chính, chuyên ngành đào tạo, giảng viên hướng dẫn. Mật khẩu được mã hóa bảo mật bằng thuật toán bcrypt.
+
+---
+
+## Đặc tả giao thức MQTT và các topic
+
+Hệ thống sử dụng máy chủ MQTT Broker công cộng `broker.emqx.io` qua cổng TCP `1883` với 3 topic cốt lõi:
+
+### 1. Topic Sensor - Dữ liệu đo cảm biến
+* Hướng truyền: ESP32 gửi lên MQTT Broker và chuyển tiếp tới Backend.
+* Chu kỳ phát: Định kỳ mỗi 3 giây một lần.
+* Cấu trúc gói tin JSON:
   ```json
   {
     "temperature": 28.5,
@@ -167,22 +239,22 @@ Hệ thống sử dụng MQTT Broker công cộng **`broker.emqx.io`** trên c�
     "light": 480.0
   }
   ```
-* **Chức năng:** Truyền số đo môi trường tức thời vào bộ đệm và lưu trữ vào bảng `sensor_logs`. Gói tin này đồng thời đóng vai trò **Heartbeat**; nếu Backend không nhận được gói tin trong quá **8 giây**, hệ thống tự động xác định trạng thái phần cứng chuyển sang `ESP32 Offline`.
+* Chức năng: Truyền số đo môi trường tức thời vào bộ đệm và lưu trữ vào bảng `sensor_logs`. Gói tin này đồng thời đóng vai trò gói tin kiểm tra kết nối Heartbeat. Nếu máy chủ Backend không nhận được gói tin mới quá 8 giây, hệ thống tự động xác định trạng thái phần cứng chuyển sang ngoại tuyến ESP32 Offline.
 
-### 2. `Device_control` (Lệnh điều khiển thiết bị)
-* **Hướng truyền:** `Backend / Web Dashboard` $\rightarrow$ `MQTT Broker` $\rightarrow$ `ESP32`
-* **Cấu trúc gói tin JSON:**
+### 2. Topic Device_control - Lệnh điều khiển thiết bị
+* Hướng truyền: Giao diện web hoặc máy chủ Backend gửi xuống mạch ESP32.
+* Cấu trúc gói tin JSON:
   ```json
   {
     "LED1": "ON"
   }
   ```
-  *(Có thể truyền điều khiển riêng lẻ từng thiết bị hoặc đồng thời nhiều thiết bị, ví dụ: `{"LED1":"ON", "LED2":"OFF"}`).*
+  Hệ thống có thể truyền lệnh cho từng thiết bị đơn lẻ hoặc đồng thời nhiều thiết bị, ví dụ: `{"LED1":"ON", "LED2":"OFF"}`.
 
-### 3. `Device_respond` (Xác nhận trạng thái vật lý thực tế)
-* **Hướng truyền:** `ESP32` $\rightarrow$ `MQTT Broker` $\rightarrow$ `Backend`
-* **Cờ cấu hình:** `retain = true` (Giúp các client mới kết nối ngay lập tức nắm bắt được trạng thái mạch).
-* **Cấu trúc gói tin JSON:**
+### 3. Topic Device_respond - Xác nhận trạng thái thiết bị
+* Hướng truyền: Mạch ESP32 gửi lên MQTT Broker và chuyển tiếp tới Backend.
+* Cờ cấu hình: retain bằng true để các máy khách mới kết nối lập tức nhận được trạng thái mới nhất.
+* Cấu trúc gói tin JSON:
   ```json
   {
     "LED1": "ON",
@@ -190,49 +262,127 @@ Hệ thống sử dụng MQTT Broker công cộng **`broker.emqx.io`** trên c�
     "LED3": "OFF"
   }
   ```
-* **Chức năng:** Sau khi ESP32 thực thi lệnh gạt chân GPIO tương ứng, nó lập tức gửi gói tin xác nhận này. Backend bắt được tin sẽ ghi nhận thời điểm hoàn thành vào cột `thoi_gian_phan_hoi` trong bảng `device_logs`, xác nhận kết quả `SUCCESS`.
+* Chức năng: Sau khi mạch ESP32 gạt chân GPIO tương ứng thành công, nó gửi gói tin xác nhận này lên hệ thống. Máy chủ Backend ghi nhận mốc thời gian hoàn thành vào cột `thoi_gian_phan_hoi` trong bảng `device_logs`, xác nhận kết quả thành công SUCCESS.
 
 ### 4. Lệnh kiểm thử nhanh bằng Mosquitto CLI
 
-* **Lắng nghe dữ liệu cảm biến:**
+* Lắng nghe dữ liệu cảm biến:
   ```bash
   mosquitto_sub -h broker.emqx.io -p 1883 -t "Sensor" -v
   ```
-* **Lắng nghe phản hồi trạng thái thiết bị:**
+* Lắng nghe phản hồi trạng thái thiết bị:
   ```bash
   mosquitto_sub -h broker.emqx.io -p 1883 -t "Device_respond" -v
   ```
-* **Bắn lệnh bật Quạt (LED1):**
+* Gửi lệnh bật Quạt LED 1:
   ```bash
   mosquitto_pub -h broker.emqx.io -p 1883 -t "Device_control" -m "{\"LED1\":\"ON\"}"
   ```
-* **Bắn lệnh tắt Quạt (LED1):**
+* Gửi lệnh tắt Quạt LED 1:
   ```bash
   mosquitto_pub -h broker.emqx.io -p 1883 -t "Device_control" -m "{\"LED1\":\"OFF\"}"
   ```
 
 ---
 
-## 🛠️ Hướng Dẫn Cài Đặt & Khởi Chạy
+## Hướng dẫn cài đặt và khởi chạy hệ thống
 
-### Yêu cầu tiên quyết
-* **Node.js:** Phiên bản $\ge$ 18.0.0
-* **MySQL Server:** Đang chạy tại `localhost:3306` (đã có cơ sở dữ liệu `dang_iot`)
-* **VS Code & PlatformIO IDE:** (Nếu cần nạp mã nguồn xuống mạch ESP32)
+### Yêu cầu môi trường
+* Node.js phiên bản từ 18 trở lên.
+* Cơ sở dữ liệu MySQL Server phiên bản từ 8.0 trở lên.
+* Visual Studio Code kèm tiện ích mở rộng PlatformIO IDE.
+* Mạch vi điều khiển ESP32-S3 hoặc ESP32 cùng dây cáp nạp USB Type-C.
 
 ---
 
-### Bước 1: Khởi động Backend Máy Chủ
+### Bước 1: Khởi tạo cơ sở dữ liệu MySQL
 
-1. Mở cửa sổ Terminal, di chuyển vào thư mục Backend:
+Toàn bộ cấu trúc bảng và dữ liệu mẫu khởi tạo đã được cung cấp trong tệp `database_setup.sql`.
+
+Người dùng có thể khởi tạo cơ sở dữ liệu bằng một trong hai cách sau:
+
+#### Cách 1: Sử dụng dòng lệnh MySQL CLI
+1. Mở cửa sổ dòng lệnh Terminal hoặc PowerShell.
+2. Di chuyển đến thư mục chứa mã nguồn dự án:
    ```powershell
-   cd BaiThucHanh3\PhanMem\BE
+   cd BaiThucHanh3
    ```
-2. Khởi chạy máy chủ:
+3. Chạy lệnh nạp tệp SQL vào MySQL:
+   ```bash
+   mysql -u root -p < database_setup.sql
+   ```
+   Nhập mật khẩu tài khoản MySQL root khi có yêu cầu. Lệnh sẽ tự động tạo cơ sở dữ liệu `dang_iot`, khởi tạo toàn bộ 5 bảng và nạp dữ liệu mẫu ban đầu.
+
+#### Cách 2: Sử dụng giao diện phpMyAdmin
+1. Mở trình duyệt web và truy cập giao diện phpMyAdmin tại địa chỉ:
+   ```text
+   http://localhost/phpmyadmin
+   ```
+   hoặc cổng tùy chỉnh như `http://localhost:8080/phpmyadmin`.
+2. Chọn thẻ **Import** trên thanh menu chính.
+3. Nhấn nút **Choose File** và chọn tệp `database_setup.sql` trong thư mục `BaiThucHanh3`.
+4. Nhấn nút **Import** ở cuối trang để hoàn tất quá trình tạo cơ sở dữ liệu.
+
+Tài khoản quản trị mặc định sau khi khởi tạo:
+* Tên đăng nhập: `ADMIN`
+* Mật khẩu: `123456`
+
+---
+
+### Bước 2: Cài đặt PlatformIO và nạp mã nguồn cho ESP32
+
+#### 1. Cài đặt tiện ích mở rộng PlatformIO IDE
+1. Mở phần mềm Visual Studio Code.
+2. Mở trình quản lý tiện ích mở rộng Extensions bằng cách nhấn vào biểu tượng bốn ô vuông ở thanh công cụ bên trái hoặc nhấn tổ hợp phím `Ctrl + Shift + X`.
+3. Nhập từ khóa `PlatformIO IDE` vào thanh tìm kiếm.
+4. Chọn tiện ích do PlatformIO phát hành và nhấn nút **Install**. Chờ hệ thống tự động hoàn tất quá trình cài đặt và khởi động lại VS Code nếu có yêu cầu.
+
+#### 2. Mở thư mục dự án và cấu hình thông số
+1. Trên giao diện VS Code, chọn **File** $\rightarrow$ **Open Folder...** và trỏ đến thư mục:
+   ```text
+   BaiThucHanh3/PhanCung
+   ```
+2. Mở tệp `src/main.cpp` hoặc `include/secrets.h` để kiểm tra và cập nhật thông số kết nối WiFi:
+   * Tên mạng WiFi: gán vào biến `ssid`.
+   * Mật khẩu WiFi: gán vào biến `password`.
+   * Địa chỉ MQTT Broker: mặc định là `broker.emqx.io`.
+
+#### 3. Biên dịch và nạp mã nguồn vào vi điều khiển
+1. Kết nối mạch ESP32 với máy tính thông qua cáp USB Type-C.
+2. Nhấn vào biểu tượng **PlatformIO Build** hình dấu tích trên thanh trạng thái phía dưới của VS Code để kiểm tra và biên dịch mã nguồn.
+3. Sau khi quá trình biên dịch báo thành công `SUCCESS`, nhấn vào biểu tượng **PlatformIO Upload** hình mũi tên sang phải để nạp chương trình vào vi điều khiển.
+
+#### 4. Giám sát hoạt động qua Serial Monitor
+Nhấn vào biểu tượng **PlatformIO: Serial Monitor** trên thanh trạng thái với tốc độ baud `115200` để theo dõi các bản tin trạng thái kết nối mạng WiFi, kết nối MQTT Broker và các gói tin đo cảm biến gửi định kỳ.
+
+---
+
+### Bước 3: Khởi chạy máy chủ Backend
+
+1. Mở cửa sổ dòng lệnh Terminal mới và di chuyển vào thư mục Backend:
+   ```powershell
+   cd BaiThucHanh3/PhanMem/BE
+   ```
+2. Cài đặt các gói thư viện phụ thuộc:
+   ```powershell
+   npm install
+   ```
+3. Kiểm tra tệp `.env` để đảm bảo các thông số kết nối cơ sở dữ liệu MySQL và cổng dịch vụ phù hợp với máy chủ cục bộ:
+   ```env
+   PORT=5000
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASS=
+   DB_NAME=dang_iot
+   DB_PORT=3306
+   MQTT_BROKER=broker.emqx.io
+   MQTT_PORT=1883
+   ```
+4. Khởi chạy máy chủ Backend:
    ```powershell
    npm start
    ```
-3. Khi khởi động thành công, màn hình sẽ hiển thị:
+5. Khi máy chủ sẵn sàng phục vụ, màn hình sẽ thông báo:
    ```text
    ==================================================
    🚀 SMART HOME BACKEND SERVER READY
@@ -244,40 +394,23 @@ Hệ thống sử dụng MQTT Broker công cộng **`broker.emqx.io`** trên c�
 
 ---
 
-### Bước 2: Khởi động Giao Diện Frontend Web
+### Bước 4: Khởi chạy giao diện Frontend
 
-1. Mở một cửa sổ Terminal mới, di chuyển vào thư mục Frontend:
+1. Mở một cửa sổ dòng lệnh Terminal mới và di chuyển vào thư mục Frontend:
    ```powershell
-   cd BaiThucHanh3\PhanMem\FE
+   cd BaiThucHanh3/PhanMem/FE
    ```
-2. Khởi chạy máy chủ phát triển Vite:
+2. Cài đặt các gói thư viện phụ thuộc:
+   ```powershell
+   npm install
+   ```
+3. Khởi chạy máy chủ phát triển giao diện:
    ```powershell
    npm run dev
    ```
-3. Mở trình duyệt web và truy cập địa chỉ:
+4. Mở trình duyệt web và truy cập địa chỉ:
    ```text
    http://localhost:5173
    ```
-4. **Thông tin đăng nhập mặc định:**
-   * **Tên đăng nhập:** `ADMIN`
-   * **Mật khẩu:** `123456`
+5. Đăng nhập với tài khoản quản trị `ADMIN` và mật khẩu `123456` để bắt đầu quản lý và giám sát hệ thống.
 
----
-
-### Bước 3: Nạp Code Phần Cứng Cho ESP32 (Tùy chọn)
-
-1. Mở thư mục `BaiThucHanh3\PhanCung` bằng **Visual Studio Code**.
-2. Kiểm tra thông số WiFi trong tệp `src/main.cpp` (SSID: `HaiDang`).
-3. Kết nối mạch **Lolin S3 Mini** với máy tính qua cổng Type-C.
-4. Nhấn biểu tượng **PlatformIO: Upload** trên thanh trạng thái phía dưới để nạp chương trình.
-5. Mở **Serial Monitor** với tốc độ Baud `115200` để theo dõi các bản tin log đọc cảm biến và nhận lệnh MQTT.
-
----
-
-## 🏆 Đánh Giá Kết Quả Thực Nghiệm
-
-* [x] **Xóa sạch mock data:** Tệp `mockData.ts` và toàn bộ dữ liệu giả lập đã được loại bỏ hoàn toàn khỏi mã nguồn.
-* [x] **Biên dịch Frontend hoàn hảo:** `npm run build` chạy thành công không có bất kỳ cảnh báo hoặc lỗi TypeScript nào.
-* [x] **Dữ liệu thật 100%:** Toàn bộ thẻ thông số, biểu đồ phân tích, bảng dữ liệu cảm biến (hơn 26.600 dòng) và lịch sử thao tác đều được truy vấn trực tiếp từ MySQL `dang_iot`.
-* [x] **Điều khiển 2 chiều:** Bật/tắt công tắc trên Web phát lệnh qua REST API $\rightarrow$ MQTT $\rightarrow$ ESP32 gạt chân GPIO $\rightarrow$ Gửi phản hồi ACK $\rightarrow$ Ghi nhận thời gian đáp ứng thực tế.
-* [x] **Cấu trúc thư mục chuẩn hóa:** Chia tách rành mạch thành `PhanCung`, `PhanMem/BE` và `PhanMem/FE`.
