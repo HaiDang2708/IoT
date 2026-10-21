@@ -22,7 +22,7 @@ Mạch ESP32-S3 Lolin S3 Mini, máy chủ Backend Node.js, giao diện người 
 * Khoa: An toàn thông tin
 * Giảng viên hướng dẫn: TS. Nguyễn Quốc Uy
 * Cơ sở đào tạo: Học viện Công nghệ Bưu chính Viễn thông
-* Học phần: Thực hành Internet of Things
+* Học phần: IoT ứng dụng
 
 ---
 
@@ -31,7 +31,7 @@ Mạch ESP32-S3 Lolin S3 Mini, máy chủ Backend Node.js, giao diện người 
 Hệ thống giám sát và điều khiển nhà thông minh Smart Home IoT là giải pháp quan trắc môi trường và quản lý thiết bị toàn diện, được tích hợp chặt chẽ qua 3 tầng công nghệ:
 
 1. Tầng phần cứng: Vi điều khiển ESP32-S3 Lolin S3 Mini giao tiếp với cảm biến nhiệt độ và độ ẩm DHT11, cảm biến cường độ ánh sáng số BH1750 qua giao thức I2C, đồng thời điều khiển 3 thiết bị chấp hành gồm quạt làm mát, máy hút ẩm và đèn ngoài trời.
-2. Tầng dịch vụ máy chủ: Máy chủ Node.js và Express đóng vai trò cầu nối xử lý giữa giao thức truyền thông MQTT tại máy chủ broker.emqx.io cổng 1883 với cơ sở dữ liệu quan hệ MySQL dang_iot, đồng thời cung cấp hệ thống REST API chuẩn hóa cho ứng dụng người dùng.
+2. Tầng dịch vụ máy chủ: Máy chủ Node.js và Express đóng vai trò cầu nối xử lý giữa giao thức truyền thông MQTT tại máy chủ broker.emqx.io cổng 1883 với cơ sở dữ liệu quan hệ MySQL, đồng thời cung cấp hệ thống API cho ứng dụng người dùng.
 3. Tầng giao diện người dùng: Ứng dụng web xây dựng trên nền tảng React 19, TypeScript, Vite và Tailwind CSS với giao diện hiện đại, hỗ trợ trực quan hóa biểu đồ chuỗi thời gian thực, bảng nhật ký phân trang và tìm kiếm số liệu nâng cao.
 
 ---
@@ -110,20 +110,20 @@ flowchart TD
     subgraph HARDWARE["Phần cứng: Mạch vi điều khiển ESP32-S3"]
         DHT["Cảm biến nhiệt độ, độ ẩm DHT11<br/>Chân GPIO 8"] --> ESP["Vi điều khiển ESP32-S3"]
         BH["Cảm biến ánh sáng BH1750 I2C<br/>SDA: 10, SCL: 9"] --> ESP
-        ESP --> LED1["LED 1: Quạt làm mát<br/>Chân GPIO 11"]
+        ESP --> LED1["LED 1: Quạt<br/>Chân GPIO 11"]
         ESP --> LED2["LED 2: Máy hút ẩm<br/>Chân GPIO 12"]
-        ESP --> LED3["LED 3: Đèn ngoài trời<br/>Chân GPIO 7"]
+        ESP --> LED3["LED 3: Đèn<br/>Chân GPIO 7"]
     end
 
-    subgraph BROKER["Máy chủ MQTT Broker: broker.emqx.io"]
+    subgraph BROKER["Máy chủ MQTT Broker"]
         T_SENSOR["Topic: Sensor"]
         T_CMD["Topic: Device_control"]
         T_ACK["Topic: Device_respond"]
     end
 
-    subgraph BACKEND["Máy chủ Backend: Node.js Express cổng 5000"]
-        MQTT_CLIENT["MQTT Client và giám sát kết nối"]
-        REST_API["Bộ định tuyến REST API"]
+    subgraph BACKEND["Máy chủ Backend"]
+        MQTT_CLIENT["MQTT Client"]
+        REST_API["Bộ định tuyến"]
         SERVICES["Dịch vụ xử lý cảm biến, thiết bị, người dùng"]
     end
 
