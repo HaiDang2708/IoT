@@ -21,8 +21,8 @@ CREATE TABLE users (
     so_dien_thoai VARCHAR(20),
     github VARCHAR(100),
     drive VARCHAR(100),
-    api_doc VARCHAR(255),
-    figma VARCHAR(255),
+    api_doc TEXT,
+    figma TEXT,
     avatar TEXT,
     mssv VARCHAR(50),
     lop_hanh_chinh VARCHAR(50),
@@ -88,14 +88,14 @@ VALUES (
     1,
     'ADMIN', 
     '$2b$10$WFi0QkVLe22.hviUMnjFge7lQVk2w/s9pXdDiZ/7O/3rvlbv7LzB6', 
-    'Nguyen Van A', 
-    'bundeeptry115@gmail.com', 
-    '2004-05-11', 
+    'Đặng Trần Hải Đăng', 
+    'dang@gmail.com', 
+    '2005-08-27', 
     '0334296045', 
-    'https://github.com/Huhuhu', 
-    'https://drive.com',
-    'http://localhost:5000/api',
-    'https://figma.com',
+    'https://github.com/HaiDang-05', 
+    'https://drive.google.com/drive/folders/...',
+    'https://documenter.getpostman.com/view/57401053/2sBYHRW2B4',
+    'https://www.figma.com/proto/lvtCx7oOHQ4jTpftU3YRcY/IoT?page-id=0%3A1&node-id=1-1728&p=f&viewport=-5668%2C-4159%2C0.4&t=7EjIMwiWN0nr617e-1&scaling=contain&content-scaling=fixed',
     '/anhthe.png',
     'DN11',
     'BCN01',
@@ -111,7 +111,7 @@ INSERT INTO devices (id, ma_thiet_bi, ten_thiet_bi, chan_gpio, trang_thai_hien_t
 VALUES 
 (1, 'led1', 'Quạt', 11, FALSE),
 (2, 'led2', 'Máy hút ẩm', 12, FALSE),
-(3, 'led3', 'Đèn ngoài trời', 7, FALSE);
+(3, 'led3', 'Đèn sân', 7, FALSE);
 
 -- Khởi tạo danh mục cảm biến
 INSERT INTO sensors (id, device_id, ma_cam_bien, ten_cam_bien, loai_cam_bien, don_vi)

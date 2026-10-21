@@ -14,7 +14,6 @@ interface TableProps<T> {
   data: T[];
   isLoading?: boolean;
   emptyText?: string;
-  onRowClick?: (row: T) => void;
 }
 
 export function Table<T extends { id?: string | number }>({
@@ -22,7 +21,6 @@ export function Table<T extends { id?: string | number }>({
   data,
   isLoading = false,
   emptyText = 'Không có dữ liệu hiển thị',
-  onRowClick,
 }: TableProps<T>) {
   return (
     <div className="w-full h-full min-h-0 overflow-auto select-none premium-table-container rounded-xl">
@@ -56,8 +54,7 @@ export function Table<T extends { id?: string | number }>({
             data.map((row, rowIdx) => (
               <tr
                 key={row.id || rowIdx}
-                onClick={() => onRowClick && onRowClick(row)}
-                className={`hover:bg-slate-50/50 transition duration-150 ${onRowClick ? 'cursor-pointer' : ''}`}
+                className="hover:bg-slate-50/50 transition duration-150"
               >
                 {columns.map((column, colIdx) => (
                   <td key={colIdx} className={`px-6 py-3.5 text-xs font-medium text-slate-600 ${column.className || ''}`}>

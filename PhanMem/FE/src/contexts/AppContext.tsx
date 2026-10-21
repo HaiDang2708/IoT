@@ -32,8 +32,6 @@ interface AppContextType {
   
   // Setters & Actions
   loadingDeviceIds: Record<string, boolean>;
-  setDevices: React.Dispatch<React.SetStateAction<Device[]>>;
-  setUserProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
   toggleDeviceState: (deviceId: string, currentState: boolean) => Promise<void>;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -146,7 +144,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const res = await apiService.updateDeviceState(
         deviceId, 
         targetState, 
-        currentState, 
         targetDevice.device_code, 
         Number(userProfile.id) || 1
       );
@@ -248,8 +245,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isAuthenticated,
         isEsp32Online,
         loadingDeviceIds,
-        setDevices,
-        setUserProfile,
         toggleDeviceState,
         login,
         logout,

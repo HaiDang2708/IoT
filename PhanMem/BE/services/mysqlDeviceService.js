@@ -1,6 +1,5 @@
 const db = require('../config/mysql');
-const { coreTopics } = require('../config/mqtt');
-const { buildTimeRangeCondition } = require('../utils/dateHelper');
+const { buildSmartTimeCondition } = require('../utils/dateHelper');
 
 // Đồng bộ trạng thái vật lý thực tế của thiết bị (LED) từ ESP32 gửi lên vào MySQL
 async function syncDevicePhysicalState(code, isON) {
@@ -30,11 +29,6 @@ async function getDevices() {
       id: String(row.id),
       device_code: row.ma_thiet_bi,
       device_name: row.ten_thiet_bi,
-      device_type: 'LED',
-      gpio_pin: row.chan_gpio,
-      location: '',
-      mqtt_topic_cmd: coreTopics.DEVICE_CONTROL || 'Device_control',
-      mqtt_topic_state: coreTopics.DEVICE_RESPOND || 'Device_respond',
       current_state: !!row.trang_thai_hien_tai,
     }));
   } catch (err) {
@@ -59,35 +53,6 @@ async function updateDeviceState(deviceId, isON) {
   }
 }
 
-// API: Cập nhật linh hoạt thuộc tính thiết bị (PATCH)
-async function updateDevicePartial(deviceId, patchData) {
-  try {
-    const fields = [];
-    const values = [];
-
-    if (patchData.isON !== undefined || patchData.current_state !== undefined) {
-      const isON = patchData.isON !== undefined ? !!patchData.isON : !!patchData.current_state;
-      fields.push('trang_thai_hien_tai = ?');
-      values.push(isON);
-    }
-    if (patchData.ten_thiet_bi !== undefined || patchData.device_name !== undefined) {
-      const name = patchData.ten_thiet_bi !== undefined ? patchData.ten_thiet_bi : patchData.device_name;
-      fields.push('ten_thiet_bi = ?');
-      values.push(name);
-    }
-
-    if (fields.length === 0) return { success: true };
-
-    values.push(deviceId);
-    const sql = `UPDATE devices SET ${fields.join(', ')} WHERE id = ?`;
-    const [result] = await db.query(sql, values);
-
-    return { success: result.affectedRows > 0 };
-  } catch (err) {
-    console.error('[MySQL-Service Error] updateDevicePartial failed:', err.message);
-    return { success: false, error: err.message };
-  }
-}
 
 // API: Ghi log điều khiển thiết bị (Lưu vết user_id thực hiện)
 async function insertDeviceLog(deviceId, oldState, newState, userId = null, ketQua = 'LOADING') {
@@ -136,28 +101,21 @@ async function resolvePendingDeviceLogs(deviceCode, ketQua = 'SUCCESS') {
 }
 
 // API: Lấy danh sách lịch sử hoạt động (Action History) chuẩn hóa theo yêu cầu
-async function getMergedHistory(dateString = null, startTime = null, endTime = null, searchTime = null, deviceFilter = null, actionFilter = null, statusFilter = null) {
+async function getMergedHistory(searchTime = null, deviceFilter = null, actionFilter = null, statusFilter = null) {
   const list = [];
   try {
     let conditions = [];
     let params = [];
 
-    // 1. Lọc theo thời gian từ query params nếu có
-    if (dateString || startTime || endTime) {
-      const timeCond = buildTimeRangeCondition(dateString, startTime, endTime, 'dl.thoi_gian');
-      if (timeCond.whereClause) {
-        const rawClause = timeCond.whereClause.replace(/^\s*WHERE\s+/i, '');
-        if (rawClause) {
-          conditions.push(`(${rawClause})`);
-          params.push(...timeCond.params);
-        }
-      }
-    }
-
-    // 2. Tìm kiếm theo chuỗi thời gian người dùng nhập vào ô tìm kiếm
+    // 1. Tìm kiếm theo chuỗi thời gian người dùng nhập vào ô tìm kiếm (phân cấp thông minh)
     if (searchTime && String(searchTime).trim() !== '') {
-      conditions.push(`(DATE_FORMAT(dl.thoi_gian, '%Y-%m-%d %H:%i:%s') LIKE ? OR DATE_FORMAT(dl.thoi_gian_phan_hoi, '%Y-%m-%d %H:%i:%s') LIKE ?)`);
-      params.push(`%${searchTime.trim()}%`, `%${searchTime.trim()}%`);
+      const trimmedTime = searchTime.trim();
+      const sendCond = buildSmartTimeCondition(trimmedTime, 'dl.thoi_gian');
+      const respCond = buildSmartTimeCondition(trimmedTime, 'dl.thoi_gian_phan_hoi');
+      if (sendCond.clause && respCond.clause) {
+        conditions.push(`(${sendCond.clause} OR ${respCond.clause})`);
+        params.push(...sendCond.params, ...respCond.params);
+      }
     }
 
     // 3. Lọc theo thiết bị (khớp chính xác tên hoặc mã thiết bị)
@@ -227,9 +185,6 @@ async function getMergedHistory(dateString = null, startTime = null, endTime = n
         trang_thai: statusResult, // 'ON', 'OFF', 'LOADING', hoặc 'FAILED'
         thoi_gian_gui: row.thoi_gian_gui || '',
         thoi_gian_phan_hoi: isPending ? 'Đang chờ...' : (row.thoi_gian_phan_hoi || (isFailed ? 'Thất bại' : row.thoi_gian_gui)),
-        // Bổ trợ:
-        source: row.ho_ten || row.ten_dang_nhap || 'USER',
-        time: row.thoi_gian_gui,
         status: row.ket_qua
       });
     });
@@ -257,7 +212,6 @@ module.exports = {
   syncDevicePhysicalState,
   getDevices,
   updateDeviceState,
-  updateDevicePartial,
   insertDeviceLog,
   updateDeviceLogStatus,
   resolvePendingDeviceLogs,

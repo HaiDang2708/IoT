@@ -6,7 +6,6 @@ interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   description?: React.ReactNode;
   contentClassName?: string;
   headerActions?: React.ReactNode;
-  footer?: React.ReactNode;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -15,7 +14,6 @@ export const Card: React.FC<CardProps> = ({
   description,
   contentClassName,
   headerActions,
-  footer,
   className = '',
   ...props
 }) => {
@@ -45,13 +43,6 @@ export const Card: React.FC<CardProps> = ({
 
       {/* Card Content */}
       <div className={`rounded-b-[20px] ${contentClassName ?? "p-5 overflow-hidden"}`}>{children}</div>
-
-      {/* Card Footer */}
-      {footer && (
-        <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4 flex items-center justify-end">
-          {footer}
-        </div>
-      )}
     </div>
   );
 };

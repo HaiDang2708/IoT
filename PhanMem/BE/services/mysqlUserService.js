@@ -49,41 +49,6 @@ async function getUserProfile(username) {
   }
 }
 
-// Cập nhật thông tin hồ sơ
-async function updateUserProfile(username, profile) {
-  try {
-    const birthday = profile.birthday ? profile.birthday : null;
-    const [result] = await db.query(
-      `UPDATE users 
-       SET ho_ten = ?, email = ?, ngay_sinh = ?, so_dien_thoai = ?, github = ?, drive = ?, api_doc = ?, figma = ?, avatar = ?, 
-           mssv = ?, lop_hanh_chinh = ?, khoa = ?, giang_vien_huong_dan = ?, mui_gio = ?, gioi_tinh = ?, dia_chi = ?
-       WHERE ten_dang_nhap = ?`,
-      [
-        profile.fullName,
-        profile.email,
-        birthday,
-        profile.phone || null,
-        profile.github || null,
-        profile.drive || null,
-        profile.apiDoc || null,
-        profile.figma || null,
-        profile.avatar || null,
-        profile.mssv || null,
-        profile.lopHanhChinh || null,
-        profile.khoa || null,
-        profile.giangVienHuongDan || null,
-        profile.muiGio || null,
-        profile.gioiTinh || null,
-        profile.diaChi || null,
-        username
-      ]
-    );
-    return result.affectedRows > 0;
-  } catch (err) {
-    console.error('[MySQL-Service Error] updateUserProfile failed:', err.message);
-    return false;
-  }
-}
 
 // Xác thực đăng nhập bằng BCrypt trên Backend
 async function verifyUserLogin(username, password) {
@@ -133,35 +98,7 @@ async function verifyUserLogin(username, password) {
   }
 }
 
-// Cập nhật mật khẩu an toàn
-async function updateUserPassword(username, oldPass, newPass) {
-  try {
-    const [rows] = await db.query('SELECT mat_khau FROM users WHERE ten_dang_nhap = ?', [username]);
-    if (rows.length === 0) return false;
-
-    const user = rows[0];
-    const isMatch = await bcrypt.compare(oldPass, user.mat_khau);
-
-    if (!isMatch) {
-      console.log('[MySQL-Auth] Doi mat khau that bai: Sai mat khau cu');
-      return false;
-    }
-
-    // Băm mật khẩu mới (salt rounds = 10)
-    const salt = await bcrypt.genSalt(10);
-    const hashPass = await bcrypt.hash(newPass, salt);
-
-    const [result] = await db.query('UPDATE users SET mat_khau = ? WHERE ten_dang_nhap = ?', [hashPass, username]);
-    return result.affectedRows > 0;
-  } catch (err) {
-    console.error('[MySQL-Service Error] updateUserPassword failed:', err.message);
-    return false;
-  }
-}
-
 module.exports = {
   getUserProfile,
-  updateUserProfile,
-  verifyUserLogin,
-  updateUserPassword
+  verifyUserLogin
 };

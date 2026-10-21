@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '../components/Common/Card';
 import {
-  Globe,
   User,
   GraduationCap,
   MapPin,
@@ -19,7 +18,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
-// Helper formatting functions
 const YYYYMMDD_REGEX = /^(\d{4})-(\d{2})-(\d{2})$/;
 const formatDateToDDMMYYYY = (dateStr: string) => {
   if (!dateStr) return '';
@@ -84,7 +82,7 @@ const InfoItem: React.FC<InfoItemProps> = ({
   iconColor,
   title,
 }) => (
-  <div className="p-2.5 bg-slate-50/70 hover:bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-2.5 transition">
+  <div className="p-2.5 bg-slate-50/70 hover:bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-2.5 transition flex-1">
     <div className={`flex h-7.5 w-7.5 items-center justify-center rounded-lg ${bgIconColor} ${iconColor} shrink-0`}>
       <Icon className="h-4 w-4" />
     </div>
@@ -131,10 +129,10 @@ const ResourceLink: React.FC<ResourceLinkProps> = ({
       target="_blank"
       rel="noreferrer"
       title={url ? href : undefined}
-      className={`p-3 sm:p-3.5 bg-slate-50/70 hover:bg-slate-100/90 border border-slate-100 ${hoverBorder} rounded-xl flex items-center justify-between gap-3 transition group flex-1`}
+      className={`p-3.5 sm:p-4 bg-slate-50/70 hover:bg-slate-100/90 border border-slate-100 ${hoverBorder} rounded-xl flex items-center justify-between gap-3 transition group flex-1`}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${bgIcon} ${iconColor} transition shrink-0`}>
+        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${bgIcon} ${iconColor} transition shrink-0`}>
           {icon}
         </div>
         <div className="min-w-0">
@@ -144,12 +142,12 @@ const ResourceLink: React.FC<ResourceLinkProps> = ({
           </span>
         </div>
       </div>
-      <ExternalLink className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-800 shrink-0 transition" />
+      <ExternalLink className="h-4 w-4 text-slate-400 group-hover:text-slate-800 shrink-0 transition" />
     </a>
   );
 };
 
-// TRANG THÔNG TIN CÁ NHÂN (Giữ nguyên 100% giao diện Bài 3)
+// TRANG THÔNG TIN CÁ NHÂN
 export const ProfilePage: React.FC = () => {
   const { userProfile: user } = useApp();
   const birthday = formatDateToDDMMYYYY(user.birthday);
@@ -223,8 +221,13 @@ export const ProfilePage: React.FC = () => {
       {/* 2. KHU VỰC 3 CỘT THÔNG TIN CHÍNH */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 flex-1 min-h-0">
         {/* CỘT 1: THÔNG TIN HỌC VẤN */}
-        <Card title="Học tập" description="Thông tin chương trình đào tạo" className="h-full flex flex-col min-h-0">
-          <div className="space-y-2 flex-1 flex flex-col justify-around py-0.5">
+        <Card 
+          title="Học tập" 
+          description="Thông tin chương trình đào tạo" 
+          className="h-full flex flex-col min-h-0"
+          contentClassName="p-3.5 sm:p-4 flex-1 flex flex-col justify-between overflow-hidden"
+        >
+          <div className="flex-1 flex flex-col justify-between gap-2 py-0.5">
             {academicItems.map((item) => (
               <InfoItem key={item.label} {...item} />
             ))}
@@ -232,8 +235,13 @@ export const ProfilePage: React.FC = () => {
         </Card>
 
         {/* CỘT 2: THÔNG TIN LIÊN HỆ & CÁ NHÂN */}
-        <Card title="Cá nhân" description="Thông tin liên lạc & vị trí" className="h-full flex flex-col min-h-0">
-          <div className="space-y-2 flex-1 flex flex-col justify-around py-0.5">
+        <Card 
+          title="Cá nhân" 
+          description="Thông tin liên lạc & vị trí" 
+          className="h-full flex flex-col min-h-0"
+          contentClassName="p-3.5 sm:p-4 flex-1 flex flex-col justify-between overflow-hidden"
+        >
+          <div className="flex-1 flex flex-col justify-between gap-2 py-0.5">
             {personalItems.map((item) => (
               <InfoItem key={item.label} {...item} />
             ))}
@@ -241,8 +249,13 @@ export const ProfilePage: React.FC = () => {
         </Card>
 
         {/* CỘT 3: TÀI LIỆU DỰ ÁN & LIÊN KẾT NỀN TẢNG */}
-        <Card title="Tài liệu" description="Liên kết tài nguyên hệ thống" className="h-full flex flex-col min-h-0">
-          <div className="space-y-2.5 flex-1 flex flex-col justify-around py-0.5">
+        <Card 
+          title="Tài liệu" 
+          description="Liên kết tài nguyên hệ thống" 
+          className="h-full flex flex-col min-h-0"
+          contentClassName="p-3.5 sm:p-4 flex-1 flex flex-col justify-between overflow-hidden"
+        >
+          <div className="flex-1 flex flex-col justify-between gap-3 py-0.5">
             <ResourceLink
               label="Source Code"
               name="GitHub Repository"

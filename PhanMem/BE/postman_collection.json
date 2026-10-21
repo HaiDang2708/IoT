@@ -1,299 +1,584 @@
 {
 	"info": {
-		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-		"name": "API_SmartHome_IOT",
-		"description": "Tài liệu API hệ thống Nhà Thông Minh (Smart Home IoT) với 5 REST API chuẩn hóa gọn nhẹ.",
+		"_postman_id": "874b8dcc-21b3-4d1c-8cf7-3aa547c5c04d",
+		"name": "Smart Home IoT - RESTful API Specification",
+		"description": "# 🏠 HỆ THỐNG GIÁM SÁT VÀ ĐIỀU KHIỂN NHÀ THÔNG MINH (SMART HOME IOT)\n\n> **Học viện Công nghệ Bưu chính Viễn thông (PTIT)**  \n> **Học phần:** Thực hành Internet of Things (IoT)  \n> **Sinh viên thực hiện:** Đặng Trần Hải Đăng  \n> **Mã số sinh viên (MSSV):** B23DCAT036  \n> **Lớp hành chính:** D23CQAT01-B - **Khoa:** An toàn thông tin  \n> **Giảng viên hướng dẫn:** TS. Nguyễn Quốc Uy  \n\n---\n\n## 1. GIỚI THIỆU HỆ THỐNG\nTài liệu đặc tả toàn diện bộ **6 RESTful API** chính thức của hệ thống Nhà Thông Minh (Smart Home IoT). Hệ thống hoạt động theo mô hình tích hợp 3 tầng hiện đại:\n1. **Tầng Thiết Bị (Hardware):** Vi điều khiển **ESP32-S3 Lolin S3 Mini** thu thập dữ liệu từ cảm biến nhiệt độ & độ ẩm **DHT11**, cảm biến ánh sáng số **BH1750 (I2C)** và điều khiển 3 thiết bị chấp hành qua relay/transistor: Quạt (GPIO 11), Máy hút ẩm (GPIO 12), Đèn sân (GPIO 7).\n2. **Tầng Máy Chủ (Backend):** Máy chủ **Node.js & Express** kết nối cơ sở dữ liệu quan hệ **MySQL (`dang_iot`)**, đồng thời làm cầu nối truyền thông thời gian thực với phần cứng qua giao thức **MQTT** (`broker.emqx.io:1883`).\n3. **Tầng Ứng Dụng (Frontend):** Giao diện Web xây dựng trên **React 19, TypeScript, Vite & Tailwind CSS**.\n\n---\n\n## 2. THÔNG SỐ TRUY CẬP (ENVIRONMENT)\n* **Base URL:** `http://localhost:5000/api`\n* **Định dạng dữ liệu:** `application/json; charset=UTF-8`\n* **MQTT Broker:** `broker.emqx.io:1883`\n  * `Sensor`: ESP32 gửi dữ liệu quan trắc định kỳ (mỗi 3 giây)\n  * `Device_control`: Backend phát lệnh điều khiển tức thời (`retain: false`)\n  * `Device_respond`: ESP32 phản hồi xác nhận trạng thái (ACK)\n\n---\n\n## 3. BẢNG MÃ TRẠNG THÁI HTTP (STATUS CODES)\n| Mã HTTP | Ý nghĩa | Mô tả chi tiết |\n| :---: | :--- | :--- |\n| `200 OK` | Thành công | Yêu cầu xử lý thành công, trả về dữ liệu đúng chuẩn JSON. |\n| `400 Bad Request` | Lỗi đầu vào | Dữ liệu gửi lên thiếu trường bắt buộc hoặc sai định dạng. |\n| `401 Unauthorized` | Từ chối truy cập | Tên đăng nhập hoặc mật khẩu không chính xác. |\n| `404 Not Found` | Không tìm thấy | Bản ghi hoặc tài nguyên yêu cầu không tồn tại trong CSDL. |\n| `500 Server Error` | Lỗi máy chủ | Lỗi nội bộ trong quá trình thực thi truy vấn cơ sở dữ liệu. |\n| `503 Unavailable` | Phần cứng Offline | Vi điều khiển ESP32 mất kết nối mạng (Heartbeat watchdog > 8s). |\n| `504 Timeout` | Quá thời gian chờ | ESP32 không gửi phản hồi xác nhận (ACK) sau 3 giây. |",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
-			"name": "1. AUTHENTICATION",
+			"name": "1. Authentication",
+			"description": "Nhóm API phụ trách xác thực người dùng và bảo mật phiên làm việc.",
 			"item": [
 				{
-					"name": "POST /api/auth/login",
+					"name": "POST - Đăng nhập hệ thống (Login)",
 					"request": {
 						"method": "POST",
 						"header": [
 							{
 								"key": "Content-Type",
-								"value": "application/json"
+								"value": "application/json",
+								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+							"raw": "{\n  \"username\": \"ADMIN\",\n  \"password\": \"123456\"\n}"
 						},
 						"url": {
-							"raw": "http://localhost:5000/api/auth/login",
-							"protocol": "http",
+							"raw": "{{base_url}}/auth/login",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "5000",
 							"path": [
-								"api",
 								"auth",
 								"login"
 							]
 						},
-						"description": "### 🔐 API Xác thực đăng nhập hệ thống\nAPI tiếp nhận thông tin tên đăng nhập và mật khẩu, kiểm tra mã hóa BCrypt và trả về thông tin tài khoản.\n\n* **Phương thức**: POST\n* **Đường dẫn**: `/api/auth/login`"
+						"description": "### 🔐 Mục đích nghiệp vụ\nXác thực tài khoản người dùng khi đăng nhập vào hệ thống quản lý Smart Home.\n\n### ⚙️ Cơ chế xử lý Backend\n1. Kiểm tra sự tồn tại của `username` trong bảng `users` (MySQL).\n2. Sử dụng thư viện `bcryptjs.compare` để đối soát mật khẩu gửi lên với chuỗi băm an toàn lưu trong CSDL.\n3. Trả về thông tin hồ sơ tài khoản (đã loại bỏ trường mật khẩu băm).\n\n### 📥 Request Body\n* `username` *(string, bắt buộc)*: Tên đăng nhập tài khoản (mặc định: `ADMIN`).\n* `password` *(string, bắt buộc)*: Mật khẩu truy cập hệ thống (mặc định: `123456`)."
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK - Đăng nhập thành công",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"ADMIN\",\n  \"password\": \"123456\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["auth", "login"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "{\n  \"user\": {\n    \"id\": 1,\n    \"ten_dang_nhap\": \"ADMIN\",\n    \"ho_ten\": \"Đặng Trần Hải Đăng\",\n    \"email\": \"dang@gmail.com\",\n    \"ngay_sinh\": \"2005-08-27\",\n    \"so_dien_thoai\": \"0334296045\",\n    \"github\": \"https://github.com/HaiDang-05\",\n    \"drive\": \"https://drive.google.com/drive/folders/...\",\n    \"apiDoc\": \"http://localhost:5000/api\",\n    \"figma\": \"https://figma.com/...\",\n    \"avatar\": \"/anhthe.png\",\n    \"mssv\": \"B23DCAT036\",\n    \"lopHanhChinh\": \"D23CQAT01-B\",\n    \"khoa\": \"An toàn thông tin\",\n    \"giangVienHuongDan\": \"TS. Nguyễn Quốc Uy\",\n    \"muiGio\": \"Asia/Ho_Chi_Minh\",\n    \"gioiTinh\": \"Nam\",\n    \"diaChi\": \"Hà Nội, Việt Nam\"\n  }\n}"
+						},
+						{
+							"name": "401 Unauthorized - Sai tài khoản hoặc mật khẩu",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"ADMIN\",\n  \"password\": \"sai_mat_khau\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["auth", "login"]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "{\n  \"error\": \"Tên đăng nhập hoặc mật khẩu không chính xác\"\n}"
+						},
+						{
+							"name": "400 Bad Request - Thiếu thông tin đăng nhập",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"ADMIN\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/auth/login",
+									"host": ["{{base_url}}"],
+									"path": ["auth", "login"]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "{\n  \"error\": \"Vui lòng nhập tên đăng nhập và mật khẩu\"\n}"
+						}
+					]
 				}
 			]
 		},
 		{
-			"name": "2. USER PROFILE & SECURITY",
+			"name": "2. User Profile",
+			"description": "API truy vấn thông tin hồ sơ cá nhân của sinh viên thực hiện đề tài.",
 			"item": [
 				{
-					"name": "GET /api/user",
+					"name": "GET - Lấy thông tin hồ sơ người dùng",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:5000/api/user?username=admin",
-							"protocol": "http",
+							"raw": "{{base_url}}/user?username=ADMIN",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "5000",
 							"path": [
-								"api",
 								"user"
 							],
 							"query": [
 								{
 									"key": "username",
-									"value": "admin",
-									"description": "Tên đăng nhập của tài khoản"
+									"value": "ADMIN",
+									"description": "Tên đăng nhập của tài khoản cần truy vấn hồ sơ"
 								}
 							]
 						},
-						"description": "### 👤 API Lấy thông tin chi tiết tài khoản\nTruy vấn thông tin cá nhân và học tập chi tiết của người dùng dựa theo tên đăng nhập.\n\n* **Phương thức**: GET\n* **Đường dẫn**: `/api/user`"
+						"description": "### 👤 Mục đích nghiệp vụ\nLấy thông tin cá nhân chi tiết, dữ liệu học tập và các liên kết dự án (Github, Drive, Figma, APIDoc) phục vụ hiển thị trên trang **Hồ sơ cá nhân (Profile)** và thanh điều hướng **Navbar**.\n\n### 🔍 Tham số Query String\n* `username` *(string, bắt buộc)*: Định danh tài khoản cần tra cứu (ví dụ: `ADMIN`).\n\n### 🛡️ Tính chất API\nAPI dạng chỉ đọc (Read-only), dữ liệu được định dạng ngày sinh chuẩn hoá tránh lệch múi giờ UTC."
 					},
-					"response": []
-				},
-				{
-					"name": "PUT /api/user (Cập nhật Profile / Đổi mật khẩu)",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"username\": \"admin\",\n  \"profile\": {\n    \"fullName\": \"Nguyễn Văn A\",\n    \"email\": \"admin@example.com\",\n    \"phone\": \"0912345678\",\n    \"mssv\": \"B20DCCN001\",\n    \"khoa\": \"Công Nghệ Thông Tin\"\n  }\n}"
-						},
-						"url": {
-							"raw": "http://localhost:5000/api/user",
-							"protocol": "http",
-							"host": [
-								"localhost"
+					"response": [
+						{
+							"name": "200 OK - Lấy hồ sơ thành công",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user?username=ADMIN",
+									"host": ["{{base_url}}"],
+									"path": ["user"],
+									"query": [
+										{ "key": "username", "value": "ADMIN" }
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
 							],
-							"port": "5000",
-							"path": [
-								"api",
-								"user"
-							]
+							"body": "{\n  \"profile\": {\n    \"username\": \"ADMIN\",\n    \"fullName\": \"Đặng Trần Hải Đăng\",\n    \"email\": \"dang@gmail.com\",\n    \"birthday\": \"2005-08-27\",\n    \"phone\": \"0334296045\",\n    \"github\": \"https://github.com/HaiDang-05\",\n    \"drive\": \"https://drive.google.com/drive/folders/...\",\n    \"apiDoc\": \"http://localhost:5000/api\",\n    \"figma\": \"https://figma.com/...\",\n    \"avatar\": \"/anhthe.png\",\n    \"mssv\": \"B23DCAT036\",\n    \"lopHanhChinh\": \"D23CQAT01-B\",\n    \"khoa\": \"An toàn thông tin\",\n    \"giangVienHuongDan\": \"TS. Nguyễn Quốc Uy\",\n    \"muiGio\": \"Asia/Ho_Chi_Minh\",\n    \"gioiTinh\": \"Nam\",\n    \"diaChi\": \"Hà Nội, Việt Nam\"\n  }\n}"
 						},
-						"description": "### ✏️ API Cập nhật hồ sơ cá nhân hoặc đổi mật khẩu\nGom chung chức năng chỉnh sửa profile và đổi mật khẩu.\n* Nếu đổi mật khẩu: Gửi kèm `oldPassword` và `newPassword`.\n* Nếu sửa profile: Gửi kèm object `profile`."
-					},
-					"response": []
+						{
+							"name": "404 Not Found - Không tìm thấy người dùng",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user?username=khong_ton_tai",
+									"host": ["{{base_url}}"],
+									"path": ["user"],
+									"query": [
+										{ "key": "username", "value": "khong_ton_tai" }
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "{\n  \"error\": \"Không tìm thấy người dùng\"\n}"
+						}
+					]
 				}
 			]
 		},
 		{
-			"name": "3. DEVICE CONTROL",
+			"name": "3. Devices Control",
+			"description": "Nhóm API giám sát và điều khiển thiết bị phần cứng thông qua giao thức MQTT.",
 			"item": [
 				{
-					"name": "GET /api/devices",
+					"name": "GET - Lấy danh sách thiết bị & Trạng thái ESP32",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:5000/api/devices",
-							"protocol": "http",
+							"raw": "{{base_url}}/devices",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "5000",
 							"path": [
-								"api",
 								"devices"
 							]
 						},
-						"description": "### 📱 API Lấy danh sách toàn bộ thiết bị\nTrả về danh sách 3 thiết bị phần cứng (`led1`, `led2`, `led3`) cùng trạng thái ON/OFF hiện tại và chế độ AUTO/MANUAL."
+						"description": "### 📱 Mục đích nghiệp vụ\nTruy vấn danh sách toàn bộ các thiết bị chấp hành trong nhà (`Quạt`, `Máy hút ẩm`, `Đèn sân`), trạng thái Bật/Tắt hiện tại và kiểm tra kết nối phần cứng vi điều khiển ESP32.\n\n### 💓 Cơ chế Heartbeat Watchdog\n* ESP32 phát gói tin cảm biến định kỳ mỗi 3 giây lên MQTT Topic `Sensor`.\n* Nếu sau **8 giây** Backend không nhận thêm bất kỳ gói tin nào, cờ `isEsp32Online` tự động chuyển về `false`.\n* Khi `isEsp32Online: false`, hệ thống khóa chức năng điều khiển để đảm bảo an toàn phần cứng."
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK - Thiết bị hoạt động bình thường",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/devices",
+									"host": ["{{base_url}}"],
+									"path": ["devices"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "{\n  \"devices\": [\n    {\n      \"id\": \"1\",\n      \"device_code\": \"led1\",\n      \"device_name\": \"Quạt\",\n      \"device_type\": \"LED\",\n      \"gpio_pin\": 11,\n      \"location\": \"\",\n      \"mqtt_topic_cmd\": \"Device_control\",\n      \"mqtt_topic_state\": \"Device_respond\",\n      \"current_state\": false\n    },\n    {\n      \"id\": \"2\",\n      \"device_code\": \"led2\",\n      \"device_name\": \"Máy hút ẩm\",\n      \"device_type\": \"LED\",\n      \"gpio_pin\": 12,\n      \"location\": \"\",\n      \"mqtt_topic_cmd\": \"Device_control\",\n      \"mqtt_topic_state\": \"Device_respond\",\n      \"current_state\": false\n    },\n    {\n      \"id\": \"3\",\n      \"device_code\": \"led3\",\n      \"device_name\": \"Đèn sân\",\n      \"device_type\": \"LED\",\n      \"gpio_pin\": 7,\n      \"location\": \"\",\n      \"mqtt_topic_cmd\": \"Device_control\",\n      \"mqtt_topic_state\": \"Device_respond\",\n      \"current_state\": false\n    }\n  ],\n  \"isEsp32Online\": true\n}"
+						}
+					]
 				},
 				{
-					"name": "PATCH /api/devices/:id",
+					"name": "PATCH - Điều khiển Bật/Tắt thiết bị (Gửi MQTT)",
 					"request": {
 						"method": "PATCH",
 						"header": [
 							{
 								"key": "Content-Type",
-								"value": "application/json"
+								"value": "application/json",
+								"type": "text"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"isON\": true,\n  \"isAuto\": false\n}"
+							"raw": "{\n  \"isON\": true,\n  \"deviceCode\": \"led1\",\n  \"userId\": 1\n}"
 						},
 						"url": {
-							"raw": "http://localhost:5000/api/devices/1",
-							"protocol": "http",
+							"raw": "{{base_url}}/devices/1",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "5000",
 							"path": [
-								"api",
 								"devices",
 								"1"
 							]
 						},
-						"description": "### 🎛️ API Cập nhật linh hoạt thuộc tính thiết bị\nAPI duy nhất cho phép Bật/Tắt trạng thái (`isON`), chuyển chế độ tự động (`isAuto`), hoặc đổi tên/vị trí (`ten_thiet_bi`, `vi_tri`)."
+						"description": "### 🎛️ Mục đích nghiệp vụ\nBật hoặc Tắt thiết bị vật lý trên mạch ESP32 thông qua giao thức MQTT.\n\n### 🔄 Luồng thực thi kỹ thuật (Sequence Flow)\n1. Client gửi `PATCH /api/devices/:id` kèm trạng thái mong muốn `{ isON: true }`.\n2. Backend lưu tạm bản ghi trạng thái `LOADING` vào bảng `device_logs`.\n3. Backend phát gói tin MQTT xuống Topic `Device_control`: `{\"LED1\": \"ON\"}` với cờ `retain: false`.\n4. Mạch ESP32 gạt chân GPIO tương ứng và phát gói tin xác nhận ACK lên Topic `Device_respond`.\n5. Backend nhận được ACK trong vòng 3 giây -> Đổi trạng thái log sang `SUCCESS`, cập nhật `thoi_gian_phan_hoi` và trả về `200 OK`.\n\n### ⚠️ Cơ chế An toàn (Fail-safe Rollback)\n* Nếu ESP32 Offline: Trả mã `503 Service Unavailable`, đánh dấu log `FAILED`.\n* Nếu quá 3s không có ACK từ mạch: Trả mã `504 Gateway Timeout`, rollback CSDL về trạng thái cũ."
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK - Điều khiển thành công (Nhận ACK)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"isON\": true,\n  \"deviceCode\": \"led1\",\n  \"userId\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/devices/1",
+									"host": ["{{base_url}}"],
+									"path": ["devices", "1"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "{\n  \"success\": true,\n  \"isON\": true\n}"
+						},
+						{
+							"name": "503 Service Unavailable - Mạch ESP32 Offline",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"isON\": true\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/devices/1",
+									"host": ["{{base_url}}"],
+									"path": ["devices", "1"]
+								}
+							},
+							"status": "Service Unavailable",
+							"code": 503,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "{\n  \"success\": false,\n  \"error\": \"ESP32 hiện đang Offline hoặc mất kết nối mạng. Không thể điều khiển!\"\n}"
+						},
+						{
+							"name": "504 Gateway Timeout - Mạch không phản hồi ACK (Quá 3s)",
+							"originalRequest": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"isON\": true\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/devices/1",
+									"host": ["{{base_url}}"],
+									"path": ["devices", "1"]
+								}
+							},
+							"status": "Gateway Timeout",
+							"code": 504,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "{\n  \"success\": false,\n  \"error\": \"Thiết bị ESP32 không phản hồi trong thời gian quy định (Timeout 3s)!\"\n}"
+						}
+					]
 				}
 			]
 		},
 		{
-			"name": "4. SENSOR LOGS & ANALYTICS",
+			"name": "4. Sensors Analytics",
+			"description": "Nhóm API truy vấn dữ liệu đo đạc môi trường từ cảm biến DHT11 và BH1750.",
 			"item": [
 				{
-					"name": "GET /api/sensors (Lịch sử dữ liệu)",
+					"name": "GET - Dữ liệu biểu đồ thời gian thực (Dashboard)",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:5000/api/sensors?type=logs&limit=72",
-							"protocol": "http",
+							"raw": "{{base_url}}/sensors?type=logs&limit=25",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "5000",
 							"path": [
-								"api",
 								"sensors"
 							],
 							"query": [
 								{
 									"key": "type",
 									"value": "logs",
-									"description": "Kiểu dữ liệu: logs (nhật ký) hoặc chart (biểu đồ)"
+									"description": "Chế độ gom nhóm 3 thông số trên cùng 1 mốc thời gian"
 								},
 								{
 									"key": "limit",
-									"value": "72",
-									"description": "Số bản ghi giới hạn"
+									"value": "25",
+									"description": "Số lượng bản ghi gần nhất cần lấy về"
 								}
 							]
 						},
-						"description": "### 🌡️ API Lấy nhật ký dữ liệu quan trắc cảm biến\nTruy vấn lịch sử các bản ghi Nhiệt độ, Độ ẩm, Ánh sáng theo khoảng thời gian."
+						"description": "### 📊 Mục đích nghiệp vụ\nLấy danh sách 25 lần đo gần nhất của đồng thời 3 thông số: **Nhiệt độ (°C)**, **Độ ẩm (%)**, **Cường độ ánh sáng (lux)** phục vụ vẽ biểu đồ đa đường thời gian thực trên trang **Dashboard**.\n\n### 📈 Cấu trúc dữ liệu trả về\nMỗi phần tử trong mảng đại diện cho một mốc thời gian, chứa đầy đủ giá trị đo của cả 3 cảm biến."
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK - Trả về mảng dữ liệu biểu đồ",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/sensors?type=logs&limit=25",
+									"host": ["{{base_url}}"],
+									"path": ["sensors"],
+									"query": [
+										{ "key": "type", "value": "logs" },
+										{ "key": "limit", "value": "25" }
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "[\n  {\n    \"timestamp\": \"2026-10-15T03:00:00\",\n    \"temperature\": 34.5,\n    \"humidity\": 60.0,\n    \"light\": 22.0\n  },\n  {\n    \"timestamp\": \"2026-10-15T02:59:57\",\n    \"temperature\": 34.6,\n    \"humidity\": 60.0,\n    \"light\": 21.0\n  },\n  {\n    \"timestamp\": \"2026-10-15T02:59:54\",\n    \"temperature\": 34.7,\n    \"humidity\": 59.0,\n    \"light\": 20.0\n  }\n]"
+						}
+					]
 				},
 				{
-					"name": "GET /api/sensors (Dữ liệu vẽ biểu đồ)",
+					"name": "GET - Bảng dữ liệu quan trắc cảm biến chi tiết (Sensor Page)",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:5000/api/sensors?type=chart&daysRange=1",
-							"protocol": "http",
+							"raw": "{{base_url}}/sensors?type=raw_logs&limit=150&searchCriteria=all&searchValue=&dateString=&startTime=&endTime=",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "5000",
 							"path": [
-								"api",
 								"sensors"
 							],
 							"query": [
 								{
 									"key": "type",
-									"value": "chart"
+									"value": "raw_logs",
+									"description": "Bắt buộc: 'raw_logs' để truy vấn chi tiết từng dòng đo"
 								},
 								{
-									"key": "daysRange",
-									"value": "1"
+									"key": "limit",
+									"value": "150",
+									"description": "Số lượng bản ghi tối đa trên một truy vấn"
+								},
+								{
+									"key": "searchCriteria",
+									"value": "all",
+									"description": "Tiêu chí tìm kiếm: all | temperature | humidity | light"
+								},
+								{
+									"key": "searchValue",
+									"value": "",
+									"description": "Giá trị số đo hoặc chuỗi thời gian cần tìm"
+								},
+								{
+									"key": "dateString",
+									"value": "",
+									"description": "Lọc theo ngày cụ thể (định dạng YYYY-MM-DD)"
+								},
+								{
+									"key": "startTime",
+									"value": "",
+									"description": "Lọc mốc thời gian bắt đầu (định dạng HH:mm:ss)"
+								},
+								{
+									"key": "endTime",
+									"value": "",
+									"description": "Lọc mốc thời gian kết thúc (định dạng HH:mm:ss)"
 								}
 							]
 						},
-						"description": "### 📊 API Lấy dữ liệu gom nhóm phục vụ vẽ biểu đồ\nTrả về dữ liệu trung bình cảm biến theo giờ/ngày."
+						"description": "### 📋 Mục đích nghiệp vụ\nTruy vấn dữ liệu chi tiết từng bản ghi đo cảm biến trong CSDL phục vụ hiển thị bảng, phân trang và tìm kiếm số liệu trên trang **Sensor**.\n\n### 🔍 Khả năng tìm kiếm nâng cao\n* Hỗ trợ tìm kiếm phân cấp thời gian thông minh (giờ, phút, giây, ngày).\n* Hỗ trợ lọc theo loại cảm biến (`temperature`, `humidity`, `light`) hoặc theo khoảng thời gian xác định."
 					},
-					"response": []
+					"response": [
+						{
+							"name": "200 OK - Danh sách dòng đo chi tiết",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/sensors?type=raw_logs&limit=150",
+									"host": ["{{base_url}}"],
+									"path": ["sensors"],
+									"query": [
+										{ "key": "type", "value": "raw_logs" },
+										{ "key": "limit", "value": "150" }
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
+							],
+							"body": "[\n  {\n    \"id\": 34850,\n    \"ten_cam_bien\": \"Cảm biến Ánh sáng\",\n    \"loai_cam_bien\": \"light\",\n    \"don_vi\": \"lux\",\n    \"gia_tri\": 22.0,\n    \"timestamp\": \"2026-10-15T03:00:00\"\n  },\n  {\n    \"id\": 34849,\n    \"ten_cam_bien\": \"Cảm biến Độ ẩm\",\n    \"loai_cam_bien\": \"humidity\",\n    \"don_vi\": \"%\",\n    \"gia_tri\": 60.0,\n    \"timestamp\": \"2026-10-15T03:00:00\"\n  },\n  {\n    \"id\": 34848,\n    \"ten_cam_bien\": \"Cảm biến Nhiệt độ\",\n    \"loai_cam_bien\": \"temperature\",\n    \"don_vi\": \"°C\",\n    \"gia_tri\": 34.5,\n    \"timestamp\": \"2026-10-15T03:00:00\"\n  }\n]"
+						}
+					]
 				}
 			]
 		},
 		{
-			"name": "5. SYSTEM CONFIG & HISTORY",
+			"name": "5. Activity History",
+			"description": "Nhóm API truy vấn nhật ký thao tác điều khiển thiết bị của người dùng.",
 			"item": [
 				{
-					"name": "GET /api/system (Lịch sử / Cảnh báo / Ngưỡng)",
+					"name": "GET - Lịch sử điều khiển thiết bị (History Page)",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:5000/api/system?type=history",
-							"protocol": "http",
+							"raw": "{{base_url}}/system?type=history&deviceFilter=ALL&actionFilter=ALL&statusFilter=ALL&searchTime=",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "5000",
 							"path": [
-								"api",
 								"system"
 							],
 							"query": [
 								{
 									"key": "type",
 									"value": "history",
-									"description": "history (Lịch sử gộp), warnings (10 Cảnh báo Navbar), thresholds (Cấu hình ngưỡng)"
+									"description": "Bắt buộc: 'history' để lấy nhật ký điều khiển"
+								},
+								{
+									"key": "deviceFilter",
+									"value": "ALL",
+									"description": "Bộ lọc thiết bị: ALL | Quạt | Máy hút ẩm | Đèn sân"
+								},
+								{
+									"key": "actionFilter",
+									"value": "ALL",
+									"description": "Bộ lọc hành động: ALL | ON | OFF"
+								},
+								{
+									"key": "statusFilter",
+									"value": "ALL",
+									"description": "Bộ lọc trạng thái phản hồi: ALL | ON | OFF | LOADING | FAILED"
+								},
+								{
+									"key": "searchTime",
+									"value": "",
+									"description": "Tìm kiếm thời gian thông minh (giờ, phút, giây, ngày)"
 								}
 							]
 						},
-						"description": "### ⚙️ API Lấy thông tin hệ thống tổng hợp\nCho phép lấy lịch sử hoạt động, danh sách cảnh báo Navbar hoặc các quy tắc ngưỡng an toàn."
+						"description": "### 📜 Mục đích nghiệp vụ\nTruy vấn toàn bộ nhật ký thao tác bật/tắt thiết bị của người dùng trên trang **Lịch sử hoạt động (History)**.\n\n### ⏱️ Lưu vết thời gian phản hồi phần cứng\nMỗi bản ghi phản ánh rõ:\n* `thoi_gian_gui`: Mốc thời gian người dùng bấm nút trên Web Dashboard.\n* `thoi_gian_phan_hoi`: Mốc thời gian mạch ESP32 gửi gói tin xác nhận ACK qua MQTT về hệ thống.\n* `source`: Tên tài khoản hoặc người đã thực hiện lệnh.\n* `status`: Trạng thái thực thi (`SUCCESS`, `LOADING`, `FAILED`)."
 					},
-					"response": []
-				},
-				{
-					"name": "PUT /api/system/thresholds",
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"tempMax\": 35.0,\n  \"humMin\": 30.0,\n  \"lightMin\": 100.0,\n  \"tempComp\": \">\",\n  \"humComp\": \">\",\n  \"lightComp\": \"<\"\n}"
-						},
-						"url": {
-							"raw": "http://localhost:5000/api/system/thresholds",
-							"protocol": "http",
-							"host": [
-								"localhost"
+					"response": [
+						{
+							"name": "200 OK - Danh sách nhật ký hoạt động",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/system?type=history",
+									"host": ["{{base_url}}"],
+									"path": ["system"],
+									"query": [
+										{ "key": "type", "value": "history" }
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{ "key": "Content-Type", "value": "application/json" }
 							],
-							"port": "5000",
-							"path": [
-								"api",
-								"system",
-								"thresholds"
-							]
-						},
-						"description": "### 🛡️ API Cập nhật ngưỡng tự động an toàn\nLưu giá trị ngưỡng mới vào MySQL và đồng bộ gói tin MQTT xuống ESP32."
-					},
-					"response": []
+							"body": "[\n  {\n    \"id\": 25,\n    \"ten_thiet_bi\": \"Đèn sân\",\n    \"ma_thiet_bi\": \"led3\",\n    \"hanh_dong\": \"ON\",\n    \"trang_thai\": \"ON\",\n    \"thoi_gian_gui\": \"2026-10-15 02:43:16\",\n    \"thoi_gian_phan_hoi\": \"2026-10-15 02:43:17\",\n    \"source\": \"ADMIN\",\n    \"time\": \"2026-10-15 02:43:16\",\n    \"status\": \"SUCCESS\"\n  },\n  {\n    \"id\": 24,\n    \"ten_thiet_bi\": \"Máy hút ẩm\",\n    \"ma_thiet_bi\": \"led2\",\n    \"hanh_dong\": \"OFF\",\n    \"trang_thai\": \"OFF\",\n    \"thoi_gian_gui\": \"2026-10-15 02:40:10\",\n    \"thoi_gian_phan_hoi\": \"2026-10-15 02:40:11\",\n    \"source\": \"ADMIN\",\n    \"time\": \"2026-10-15 02:40:10\",\n    \"status\": \"SUCCESS\"\n  }\n]"
+						}
+					]
 				}
 			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000/api",
+			"type": "string"
 		}
 	]
 }

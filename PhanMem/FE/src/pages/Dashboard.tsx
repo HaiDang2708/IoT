@@ -54,7 +54,7 @@ const SENSOR_THEMES = {
   },
 } as const;
 
-// 1. COMPONENT THẺ CẢM BIẾN (Giữ nguyên 100% giao diện Bài 3)
+// 1. COMPONENT THẺ CẢM BIẾN 
 interface SensorCardProps {
   label: string;
   value: number | string;
@@ -95,7 +95,7 @@ const SensorCard: React.FC<SensorCardProps> = ({
   );
 };
 
-// 2. COMPONENT THẺ THIẾT BỊ (Giữ nguyên 100% giao diện Bài 3)
+// 2. COMPONENT THẺ THIẾT BỊ
 interface DeviceCardProps {
   device: Device;
   onStateToggle: (id: string, currentState: boolean) => void;
@@ -140,7 +140,7 @@ const DeviceCard: React.FC<DeviceCardProps> = ({
       };
     }
 
-    // 3. Đèn ngoài trời / Đèn
+    // 3. Đèn 
     return {
       icon: (
         <Lightbulb
@@ -217,7 +217,7 @@ const DeviceCard: React.FC<DeviceCardProps> = ({
   );
 };
 
-// 3. CẤU HÌNH BIỂU ĐỒ (Giữ nguyên cấu hình Chart.js 2 trục của Bài 3)
+// 3. CẤU HÌNH BIỂU ĐỒ
 const CHART_OPTIONS: ChartOptions<'line'> = {
   responsive: true,
   maintainAspectRatio: false,
@@ -240,7 +240,6 @@ const CHART_OPTIONS: ChartOptions<'line'> = {
       bodyFont: { family: 'Inter', size: 10 },
       padding: 8,
       cornerRadius: 6,
-      filter: (item) => item.parsed.y !== null && !isNaN(item.parsed.y),
       callbacks: {
         title: (items) => (items.length ? items[0].label || '' : ''),
         label: (context) => {
@@ -315,72 +314,18 @@ const CHART_OPTIONS: ChartOptions<'line'> = {
   },
 };
 
-// Thuật toán: Gap Detection & Null Insertion (Xử lý ngắt nét đồ thị khi mất kết nối > 8s)
-const processChartDataWithGaps = (logs: SensorReading[]) => {
-  if (!logs || logs.length === 0) {
-    return { labels: [], temps: [], hums: [], lights: [] };
-  }
-
-  const sortedLogs = [...logs].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
-
-  const GAP_THRESHOLD_MS = 8000;
-  const processedLabels: string[] = [];
-  const processedTemps: (number | null)[] = [];
-  const processedHums: (number | null)[] = [];
-  const processedLights: (number | null)[] = [];
-
-  for (let i = 0; i < sortedLogs.length; i++) {
-    const currentLog = sortedLogs[i];
-    const currentTime = new Date(currentLog.timestamp).getTime();
-
-    if (i > 0) {
-      const prevLog = sortedLogs[i - 1];
-      const prevTime = new Date(prevLog.timestamp).getTime();
-      const diffMs = currentTime - prevTime;
-
-      if (diffMs > GAP_THRESHOLD_MS) {
-        const gapTimeStr = new Date(prevTime + 3000).toLocaleTimeString([], {
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-        });
-        processedLabels.push(gapTimeStr);
-        processedTemps.push(null);
-        processedHums.push(null);
-        processedLights.push(null);
-      }
-    }
-
-    processedLabels.push(
-      new Date(currentLog.timestamp).toLocaleTimeString([], {
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-      })
-    );
-    processedTemps.push(currentLog.temperature);
-    processedHums.push(currentLog.humidity);
-    processedLights.push(currentLog.light);
-  }
-
-  return {
-    labels: processedLabels,
-    temps: processedTemps,
-    hums: processedHums,
-    lights: processedLights,
-  };
-};
-
 const TrendComparisonChart: React.FC<{
   labels: string[];
-  temps: (number | null)[];
-  hums: (number | null)[];
-  lights: (number | null)[];
+  temps: number[];
+  hums: number[];
+  lights: number[];
 }> = ({ labels, temps, hums, lights }) => {
   const data: ChartData<'line'> = {
     labels,
     datasets: [
       {
         label: 'Ánh sáng (Lux)',
-        data: lights as number[],
+        data: lights,
         borderColor: '#f59e0b',
         backgroundColor: 'rgba(245, 158, 11, 0.02)',
         borderWidth: 2,
@@ -391,7 +336,7 @@ const TrendComparisonChart: React.FC<{
       },
       {
         label: 'Nhiệt độ (°C)',
-        data: temps as number[],
+        data: temps,
         borderColor: '#ef4444',
         backgroundColor: 'transparent',
         borderWidth: 2,
@@ -402,7 +347,7 @@ const TrendComparisonChart: React.FC<{
       },
       {
         label: 'Độ ẩm (%)',
-        data: hums as number[],
+        data: hums,
         borderColor: '#3b82f6',
         backgroundColor: 'transparent',
         borderWidth: 2,
@@ -432,7 +377,18 @@ export const DashboardPage: React.FC = () => {
   } = useApp();
 
   const { labels, temps, hums, lights } = useMemo(() => {
-    return processChartDataWithGaps(sensorLogs);
+    return {
+      labels: sensorLogs.map(log =>
+        new Date(log.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      ),
+      temps: sensorLogs.map(log => log.temperature),
+      hums: sensorLogs.map(log => log.humidity),
+      lights: sensorLogs.map(log => log.light),
+    };
   }, [sensorLogs]);
 
   // Cấu hình thẻ cảm biến lấy giá trị thật từ Backend

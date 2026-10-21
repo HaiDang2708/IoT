@@ -12,7 +12,7 @@ type SearchCriteria = 'all' | 'temperature' | 'humidity' | 'light' | 'time';
 
 // Hằng số Regex tĩnh ngoài component
 const LETTER_REGEX = /[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]/;
-const TIME_REGEX = /^((\d{4}([-/]\d{1,2}([-/]\d{1,2})?)?)|(\d{1,2}(:\d{1,2}(:\d{1,2})?)?)|(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?))$/;
+const TIME_REGEX = /^(\d{4}([-/]\d{1,2}([-/]\d{1,2}(\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?)?)?)?|\d{1,2}(:\d{1,2}(:\d{1,2})?)?|\d{1,2}[-/]\d{1,2}([-/]\d{4}(\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?)?)?)$/;
 const NUMBER_REGEX = /^-?\d+(\.\d+)?$/;
 
 const validateInput = (criteria: SearchCriteria, value: string): string | null => {
@@ -21,10 +21,10 @@ const validateInput = (criteria: SearchCriteria, value: string): string | null =
 
   if (criteria === 'time') {
     if (LETTER_REGEX.test(trimmed)) {
-      return 'Thời gian không được chứa chữ cái (VD: 2026-10-09 hoặc 14:30:00)';
+      return 'Thời gian không được chứa chữ cái (VD: 01:19:18, 01:19, 01 hoặc 2026-10-15)';
     }
     if (!TIME_REGEX.test(trimmed)) {
-      return 'Định dạng thời gian không hợp lệ. Vui lòng nhập ngày (YYYY-MM-DD) hoặc giờ (HH:mm:ss)';
+      return 'Định dạng thời gian không hợp lệ (VD: 01:19:18, 01:19, 01 hoặc 2026-10-15)';
     }
     return null;
   }
@@ -41,7 +41,7 @@ const validateInput = (criteria: SearchCriteria, value: string): string | null =
 
 // Tra cứu placeholder dạng object lookup gọn gàng
 const PLACEHOLDERS: Record<SearchCriteria, string> = {
-  time: 'Nhập thời gian...',
+  time: 'VD: 01:19:18, 01:19, 01 hoặc 2026-10-15...',
   temperature: 'Nhập giá trị nhiệt độ...',
   humidity: 'Nhập giá trị độ ẩm...',
   light: 'Nhập giá trị ánh sáng...',
@@ -122,9 +122,6 @@ export const SensorPage: React.FC = () => {
     const limit = 2000;
     const dbLogs = await apiService.getRawSensorLogs(
       limit,
-      undefined,
-      undefined,
-      undefined,
       crit && crit !== 'all' ? crit : undefined,
       val?.trim() || undefined
     );
@@ -138,7 +135,8 @@ export const SensorPage: React.FC = () => {
 
   const handleCriteriaChange = (newCriteria: SearchCriteria) => {
     setCriteria(newCriteria);
-    setValidationError(validateInput(newCriteria, searchTerm));
+    setSearchTerm('');
+    setValidationError(null);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,6 +167,7 @@ export const SensorPage: React.FC = () => {
 
   const handleResetSearch = () => {
     setSearchTerm('');
+    setCriteria('all');
     setValidationError(null);
     setActiveQuery({ criteria: 'all', value: '' });
     setCurrentPage(1);
@@ -180,7 +179,7 @@ export const SensorPage: React.FC = () => {
   }, [logs, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(logs.length / itemsPerPage) || 1;
-  const isSearchActive = activeQuery.value.trim().length > 0;
+  const isSearchActive = activeQuery.value.trim().length > 0 || activeQuery.criteria !== 'all';
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -288,7 +287,6 @@ export const SensorPage: React.FC = () => {
               onPageChange={setCurrentPage}
               itemsPerPage={itemsPerPage}
               onItemsPerPageChange={handleItemsPerPageChange}
-              pageSizeOptions={[10, 20, 50, 100]}
             />
           </div>
         </div>

@@ -4,11 +4,10 @@ const mysqlSensorService = require('../services/mysqlSensorService');
 const mysqlDeviceService = require('../services/mysqlDeviceService');
 const mysqlUserService = require('../services/mysqlUserService');
 const { getIsEsp32Online, waitForDeviceAck } = require('../handlers/mqttHandler');
+const { client: mqttClient, coreTopics } = require('../config/mqtt');
 
-// =========================================================================
 // 1. AUTH API: Xác thực đăng nhập
 // POST /api/auth/login
-// =========================================================================
 router.post('/auth/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -24,9 +23,8 @@ router.post('/auth/login', async (req, res) => {
 });
 
 // =========================================================================
-// 2. USER API: Quản lý Hồ sơ & Mật khẩu
-// GET /api/user?username=... (Lấy profile)
-// PUT /api/user (Cập nhật Profile hoặc Đổi mật khẩu)
+// 2. USER API: Lấy thông tin Hồ sơ người dùng
+// GET /api/user?username=...
 // =========================================================================
 router.get('/user', async (req, res) => {
   const username = req.query.username || req.query.ten_dang_nhap;
@@ -42,32 +40,6 @@ router.get('/user', async (req, res) => {
   res.json({ profile });
 });
 
-router.put('/user', async (req, res) => {
-  const { username, profile, oldPassword, newPassword } = req.body;
-  if (!username) {
-    return res.status(400).json({ error: 'Vui lòng cung cấp username' });
-  }
-
-  // 1. Đổi mật khẩu nếu request gửi kèm mật khẩu cũ & mới
-  if (oldPassword && newPassword) {
-    const success = await mysqlUserService.updateUserPassword(username, oldPassword, newPassword);
-    if (!success) {
-      return res.status(400).json({ error: 'Đổi mật khẩu thất bại (Có thể do sai mật khẩu cũ)' });
-    }
-    return res.json({ success: true, message: 'Đổi mật khẩu thành công' });
-  }
-
-  // 2. Cập nhật Profile
-  if (profile) {
-    const success = await mysqlUserService.updateUserProfile(username, profile);
-    if (!success) {
-      return res.status(500).json({ error: 'Cập nhật hồ sơ thất bại' });
-    }
-    return res.json({ success: true, message: 'Cập nhật hồ sơ thành công' });
-  }
-
-  return res.status(400).json({ error: 'Thiếu dữ liệu cập nhật (profile hoặc password)' });
-});
 
 // =========================================================================
 // 3. DEVICE API: Quản lý & Điều khiển Thiết bị
@@ -82,11 +54,10 @@ router.get('/devices', async (req, res) => {
 
 router.patch('/devices/:id', async (req, res) => {
   const deviceId = req.params.id;
-  const { isON, current_state, ten_thiet_bi, device_name, vi_tri, location, deviceCode, userId } = req.body;
-  const { client: mqttClient, coreTopics } = require('../config/mqtt');
+  const { isON, deviceCode, userId } = req.body;
 
   let codeToUse = deviceCode || (deviceId === '1' ? 'led1' : deviceId === '2' ? 'led2' : deviceId === '3' ? 'led3' : '');
-  let updatedState = isON !== undefined ? !!isON : current_state !== undefined ? !!current_state : null;
+  let updatedState = isON !== undefined ? !!isON : null;
 
   // 1. Cập nhật Bật/Tắt thủ công
   if (updatedState !== null) {
@@ -110,7 +81,8 @@ router.patch('/devices/:id', async (req, res) => {
       const ledKey = codeToUse.toUpperCase(); // 'led1' -> 'LED1'
       const cmdVal = updatedState ? 'ON' : 'OFF';
       const payload = JSON.stringify({ [ledKey]: cmdVal });
-      mqttClient.publish(coreTopics.DEVICE_CONTROL, payload, { retain: true });
+      // Lệnh điều khiển tức thời (Action/Command), tuyệt đối KHÔNG retain để tránh tự bật khi ESP32 kết nối lại mạng
+      mqttClient.publish(coreTopics.DEVICE_CONTROL, payload, { retain: false });
     }
 
     if (!isOnline) {
@@ -141,11 +113,6 @@ router.patch('/devices/:id', async (req, res) => {
     }
   }
 
-  // 2. Cập nhật Tên thiết bị
-  if (ten_thiet_bi !== undefined || device_name !== undefined) {
-    await mysqlDeviceService.updateDevicePartial(deviceId, { ten_thiet_bi, device_name });
-  }
-
   res.json({ success: true });
 });
 
@@ -154,23 +121,18 @@ router.patch('/devices/:id', async (req, res) => {
 // GET /api/sensors?type=logs | chart | raw_logs
 // =========================================================================
 router.get('/sensors', async (req, res) => {
-  const { type, limit, daysRange, dateString, startTime, endTime } = req.query;
-
+  const { type, limit, searchCriteria, searchValue } = req.query;
 
   if (type === 'raw_logs') {
-    const { searchCriteria, searchValue } = req.query;
     const rawLogs = await mysqlSensorService.getRawSensorLogs(
       limit || 150, 
-      dateString, 
-      startTime, 
-      endTime,
       searchCriteria,
       searchValue
     );
     return res.json(rawLogs);
   }
 
-  const logs = await mysqlSensorService.getSensorLogs(limit || 72, daysRange, dateString, startTime, endTime);
+  const logs = await mysqlSensorService.getSensorLogs(limit || 72);
   res.json(logs);
 });
 
@@ -179,19 +141,14 @@ router.get('/sensors', async (req, res) => {
 // GET /api/system?type=history | warnings
 // =========================================================================
 router.get('/system', async (req, res) => {
-  const { type, dateString, startTime, endTime, searchTime, deviceFilter, actionFilter, statusFilter, device, action, status, time } = req.query;
+  const { type, searchTime, deviceFilter, actionFilter, statusFilter } = req.query;
 
   if (type === 'history') {
-    const sTime = searchTime || time || null;
-    const dev = deviceFilter || device || null;
-    const act = actionFilter || action || null;
-    const st = statusFilter || status || null;
-    const history = await mysqlDeviceService.getMergedHistory(dateString, startTime, endTime, sTime, dev, act, st);
+    const history = await mysqlDeviceService.getMergedHistory(searchTime, deviceFilter, actionFilter, statusFilter);
     return res.json(history);
   }
 
-
-  res.json({ success: true });
+  return res.status(400).json({ error: 'Yêu cầu tham số type=history hợp lệ' });
 });
 
 module.exports = router;

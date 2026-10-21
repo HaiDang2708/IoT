@@ -24,24 +24,24 @@ const DEFAULT_FILTERS: HistoryFilters = {
 
 // Regex cố định ngoài component
 const LETTER_REGEX = /[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]/;
-const TIME_REGEX = /^((\d{4}([-/]\d{1,2}([-/]\d{1,2})?)?)|(\d{1,2}(:\d{1,2}(:\d{1,2})?)?)|(\d{4}[-/]\d{1,2}[-/]\d{1,2}\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?))$/;
+const TIME_REGEX = /^(\d{4}([-/]\d{1,2}([-/]\d{1,2}(\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?)?)?)?|\d{1,2}(:\d{1,2}(:\d{1,2})?)?|\d{1,2}[-/]\d{1,2}([-/]\d{4}(\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?)?)?)$/;
 
 const validateTimeInput = (value: string): string | null => {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
   if (LETTER_REGEX.test(trimmed)) {
-    return 'Chỉ chấp nhận số và ký hiệu ngày giờ (VD: 2026-10-09 hoặc 14:30:00)';
+    return 'Thời gian không được chứa chữ cái (VD: 01:19:18, 01:19, 01 hoặc 2026-10-15)';
   }
 
   if (!TIME_REGEX.test(trimmed)) {
-    return 'Định dạng thời gian không hợp lệ. Vui lòng nhập ngày (YYYY-MM-DD) hoặc giờ (HH:mm:ss)';
+    return 'Định dạng thời gian không hợp lệ (VD: 01:19:18, 01:19, 01 hoặc 2026-10-15)';
   }
 
   return null;
 };
 
-// Cấu hình bảng cố định (6 cột chuẩn)
+// Cấu hình bảng cố định 
 const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
   {
     key: 'id',
@@ -178,9 +178,6 @@ export const HistoryPage: React.FC = () => {
     if (showLoading) setIsLoading(true);
     try {
       const data = await apiService.getMergedHistory(
-        undefined,
-        undefined,
-        undefined,
         appliedFilters.time || undefined,
         appliedFilters.device !== 'ALL' ? appliedFilters.device : undefined,
         appliedFilters.action !== 'ALL' ? appliedFilters.action : undefined,
@@ -299,7 +296,7 @@ export const HistoryPage: React.FC = () => {
                 value={timeInput}
                 onChange={handleTimeChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Nhập thời gian..."
+                placeholder="VD: 01:19:18, 01:19, 01 hoặc 2026-10-15..."
                 className={`w-full h-10 pl-9 pr-8 bg-white border rounded-xl text-sm transition-all duration-150 shadow-sm focus:outline-none ${
                   validationError
                     ? 'border-rose-400 text-rose-900 focus:ring-2 focus:ring-rose-200 focus:border-rose-500'
@@ -428,7 +425,6 @@ export const HistoryPage: React.FC = () => {
               onPageChange={setCurrentPage}
               itemsPerPage={itemsPerPage}
               onItemsPerPageChange={handleItemsPerPageChange}
-              pageSizeOptions={[10, 20, 50, 100]}
             />
           </div>
         </div>

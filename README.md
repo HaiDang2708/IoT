@@ -46,8 +46,7 @@ BaiThucHanh3/
 ├── PhanCung/                                # Mã nguồn phần cứng ESP32 với PlatformIO
 │   ├── platformio.ini                       # Cấu hình mạch Lolin S3 Mini và các thư viện
 │   └── src/
-│       ├── main.cpp                         # Mã nguồn C++ đọc cảm biến, kết nối WiFi và MQTT
-│       └── secrets.h                        # Khai báo thông số mạng và định danh MQTT
+│       └── main.cpp                         # Mã nguồn C++ đọc cảm biến, kết nối WiFi và MQTT
 │
 └── PhanMem/                                 # Mã nguồn phần mềm hệ thống
     ├── BE/                                  # Máy chủ Backend REST API và cầu nối MQTT
@@ -131,7 +130,7 @@ flowchart TD
         DB[("Bảng dữ liệu<br/>devices, sensors, sensor_logs, device_logs, users")]
     end
 
-    subgraph FRONTEND["Giao diện web: React Vite cổng 5173"]
+    subgraph FRONTEND["Giao diện web"]
         UI_DASH["Bảng điều khiển và biểu đồ trực quan"]
         UI_SENS["Nhật ký quan trắc cảm biến"]
         UI_HIST["Lịch sử điều khiển thiết bị"]

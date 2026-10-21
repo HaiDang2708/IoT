@@ -1,7 +1,4 @@
-// TypeScript Interfaces for Smart Home IoT System (BaiThucHanh3)
-
 export type SensorStatus = 'NORMAL' | 'WARNING' | 'CRITICAL';
-export type DeviceType = 'LED' | 'FAN' | 'PUMP' | string;
 
 export interface UserProfile {
   id?: string;
@@ -28,11 +25,6 @@ export interface Device {
   id: string;
   device_code: string; // led1, led2, led3
   device_name: string;
-  device_type: DeviceType;
-  gpio_pin: number;
-  mqtt_topic_cmd?: string;
-  mqtt_topic_state?: string;
-  location?: string;
   current_state: boolean;
 }
 

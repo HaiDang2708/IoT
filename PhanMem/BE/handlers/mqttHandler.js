@@ -26,8 +26,6 @@ function resetEspHeartbeatTimer() {
 
 // Chờ phản hồi ACK trạng thái từ ESP32 qua topic Device_respond
 function waitForDeviceAck(deviceCode, timeoutMs = 3000) {
-  // Tương thích nếu caller truyền 3 tham số (deviceCode, targetState, timeoutMs)
-  const actualTimeout = typeof timeoutMs === 'number' ? timeoutMs : 3000;
   return new Promise((resolve) => {
     const code = (deviceCode || '').toLowerCase();
     const eventName = `ack:${code}`;
@@ -43,7 +41,7 @@ function waitForDeviceAck(deviceCode, timeoutMs = 3000) {
     timer = setTimeout(() => {
       deviceAckEmitter.removeListener(eventName, onAck);
       resolve({ received: false });
-    }, actualTimeout);
+    }, timeoutMs);
 
     deviceAckEmitter.on(eventName, onAck);
   });
@@ -54,8 +52,8 @@ async function handleMqttMessage(topic, payload) {
   const msg = payload.toString().trim();
 
   try {
-    // 1. Topic SENSOR: "Sensor" hoặc "dang_iot_b23dcat036/sensor"
-    if (topic === 'Sensor' || topic === 'dang_iot_b23dcat036/sensor') {
+    // 1. Topic SENSOR: "Sensor"
+    if (topic === 'Sensor') {
       resetEspHeartbeatTimer();
       let data = {};
       try {
@@ -64,9 +62,9 @@ async function handleMqttMessage(topic, payload) {
         return;
       }
 
-      const tempVal = data.temperature !== undefined ? parseFloat(data.temperature) : data.temp !== undefined ? parseFloat(data.temp) : null;
-      const humVal = data.humidity !== undefined ? parseFloat(data.humidity) : data.hum !== undefined ? parseFloat(data.hum) : null;
-      const luxVal = data.light !== undefined ? parseFloat(data.light) : data.lux !== undefined ? parseFloat(data.lux) : null;
+      const tempVal = data.temperature !== undefined ? parseFloat(data.temperature) : null;
+      const humVal = data.humidity !== undefined ? parseFloat(data.humidity) : null;
+      const luxVal = data.light !== undefined ? parseFloat(data.light) : null;
 
       if (tempVal !== null && !isNaN(tempVal)) {
         mysqlSensorService.lastSensorReading.temp = tempVal;
@@ -84,8 +82,8 @@ async function handleMqttMessage(topic, payload) {
       }
     }
 
-    // 2. Topic DEVICE_RESPOND: "Device_respond" hoặc "dang_iot_b23dcat036/device_respond"
-    else if (topic === 'Device_respond' || topic === 'dang_iot_b23dcat036/device_respond') {
+    // 2. Topic DEVICE_RESPOND: "Device_respond"
+    else if (topic === 'Device_respond') {
       resetEspHeartbeatTimer();
 
       let data = {};
@@ -95,35 +93,14 @@ async function handleMqttMessage(topic, payload) {
         return;
       }
 
-      if (data.esp_status === 'OFFLINE') {
-        await mysqlDeviceService.handleEsp32Offline();
-        return;
-      }
-
       // Xử lý định dạng: {"LED1":"ON", "LED2":"OFF", "LED3":"ON"}
-      const devMappings = [
-        { code: 'led1', keys: ['LED1', 'led1', 'LED_1'] },
-        { code: 'led2', keys: ['LED2', 'led2', 'LED_2'] },
-        { code: 'led3', keys: ['LED3', 'led3', 'LED_3'] }
-      ];
-
-      for (const item of devMappings) {
-        let devVal = undefined;
-        for (const k of item.keys) {
-          if (data[k] !== undefined) {
-            devVal = data[k];
-            break;
-          }
-        }
-
-        if (devVal !== undefined) {
-          const isON = (typeof devVal === 'object') 
-            ? (devVal.state === 'ON' || devVal.state === true || devVal.state === 1)
-            : (devVal === 'ON' || devVal === true || devVal === 1);
-
-          await mysqlDeviceService.syncDevicePhysicalState(item.code, isON);
-          await mysqlDeviceService.resolvePendingDeviceLogs(item.code, 'SUCCESS');
-          deviceAckEmitter.emit(`ack:${item.code.toLowerCase()}`, { isON });
+      const devKeys = { led1: data.LED1, led2: data.LED2, led3: data.LED3 };
+      for (const [code, val] of Object.entries(devKeys)) {
+        if (val !== undefined) {
+          const isON = (val === 'ON' || val === true || val === 1);
+          await mysqlDeviceService.syncDevicePhysicalState(code, isON);
+          await mysqlDeviceService.resolvePendingDeviceLogs(code, 'SUCCESS');
+          deviceAckEmitter.emit(`ack:${code}`, { isON });
         }
       }
     }

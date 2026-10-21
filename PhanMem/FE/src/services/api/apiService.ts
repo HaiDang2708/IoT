@@ -6,19 +6,13 @@ export const apiService = {
   // 1. CẢM BIẾN (GET /api/sensors)
   async getRawSensorLogs(
     limit = 150, 
-    dateString?: string, 
-    startTime?: string, 
-    endTime?: string,
-    searchCriteria?: string,
+    searchCriteria?: string, 
     searchValue?: string
   ): Promise<RawSensorLog[]> {
     try {
       const url = new URL(`${API_BASE_URL}/sensors`);
       url.searchParams.append('type', 'raw_logs');
       url.searchParams.append('limit', String(limit));
-      if (dateString) url.searchParams.append('dateString', dateString);
-      if (startTime) url.searchParams.append('startTime', startTime);
-      if (endTime) url.searchParams.append('endTime', endTime);
       if (searchCriteria) url.searchParams.append('searchCriteria', searchCriteria);
       if (searchValue) url.searchParams.append('searchValue', searchValue);
 
@@ -31,15 +25,11 @@ export const apiService = {
     }
   },
 
-  async getSensorLogs(limit = 72, daysRange?: number, dateString?: string, reverseOrder = true, startTime?: string, endTime?: string): Promise<SensorReading[]> {
+  async getSensorLogs(limit = 72, reverseOrder = true): Promise<SensorReading[]> {
     try {
       const url = new URL(`${API_BASE_URL}/sensors`);
       url.searchParams.append('type', 'logs');
       url.searchParams.append('limit', String(limit));
-      if (daysRange) url.searchParams.append('daysRange', String(daysRange));
-      if (dateString) url.searchParams.append('dateString', dateString);
-      if (startTime) url.searchParams.append('startTime', startTime);
-      if (endTime) url.searchParams.append('endTime', endTime);
 
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error('API error');
@@ -66,9 +56,6 @@ export const apiService = {
       const res = await fetch(`${API_BASE_URL}/devices`);
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
-      if (Array.isArray(data)) {
-        return { devices: data, isEsp32Online: false };
-      }
       return { devices: data.devices || [], isEsp32Online: !!data.isEsp32Online };
     } catch (err) {
       console.error('[API Service] getDevices error:', err);
@@ -79,7 +66,6 @@ export const apiService = {
   async updateDeviceState(
     deviceId: string, 
     isON: boolean, 
-    oldState?: boolean, 
     deviceCode?: string, 
     userId?: number
   ): Promise<{ success: boolean; isON?: boolean; error?: string }> {
@@ -87,7 +73,7 @@ export const apiService = {
       const res = await fetch(`${API_BASE_URL}/devices/${deviceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isON, oldState, deviceCode, userId }),
+        body: JSON.stringify({ isON, deviceCode, userId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {
@@ -102,20 +88,14 @@ export const apiService = {
 
   // 3. LỊCH SỬ HOẠT ĐỘNG (GET /api/system?type=history)
   async getMergedHistory(
-    dateString?: string, 
-    startTime?: string, 
-    endTime?: string,
-    searchTime?: string,
-    deviceFilter?: string,
-    actionFilter?: string,
+    searchTime?: string, 
+    deviceFilter?: string, 
+    actionFilter?: string, 
     statusFilter?: string
   ): Promise<MergedHistoryItem[]> {
     try {
       const url = new URL(`${API_BASE_URL}/system`);
       url.searchParams.append('type', 'history');
-      if (dateString) url.searchParams.append('dateString', dateString);
-      if (startTime) url.searchParams.append('startTime', startTime);
-      if (endTime) url.searchParams.append('endTime', endTime);
       if (searchTime) url.searchParams.append('searchTime', searchTime);
       if (deviceFilter) url.searchParams.append('deviceFilter', deviceFilter);
       if (actionFilter) url.searchParams.append('actionFilter', actionFilter);
@@ -143,20 +123,6 @@ export const apiService = {
     } catch (err) {
       console.error('[API Service] getUserProfile error:', err);
       return null;
-    }
-  },
-
-  async updateUserProfile(profile: Partial<UserProfile>): Promise<boolean> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/user`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile),
-      });
-      return res.ok;
-    } catch (err) {
-      console.error('[API Service] updateUserProfile error:', err);
-      return false;
     }
   },
 

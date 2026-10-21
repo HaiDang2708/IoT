@@ -41,7 +41,7 @@ void publishDeviceRespond() {
 
     char buffer[128];
     serializeJson(doc, buffer, sizeof(buffer));
-    client.publish(topic_respond, buffer, true);
+    client.publish(topic_respond, buffer, false);
   }
 }
 
