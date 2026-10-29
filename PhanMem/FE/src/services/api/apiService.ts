@@ -1,6 +1,30 @@
-import type { SensorReading, Device, UserProfile, MergedHistoryItem, RawSensorLog } from '../../types';
+import type { SensorReading, Device, UserProfile, MergedHistoryItem, RawSensorLog, AlertStatItem } from '../../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = 
+  import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000/api');
+
+const getAuthHeaders = (): Record<string, string> => {
+  const token = localStorage.getItem('dang_iot_token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
+const handleUnauthorized = (status: number) => {
+  if (status === 401 || status === 403) {
+    localStorage.removeItem('dang_iot_token');
+    localStorage.removeItem('dang_iot_session');
+    // Chỉ chuyển hướng nếu đang không ở trang login
+    if (!window.location.pathname.includes('/login')) {
+      window.location.href = '/login';
+    }
+  }
+};
 
 export const apiService = {
   // 1. CẢM BIẾN (GET /api/sensors)
@@ -16,7 +40,10 @@ export const apiService = {
       if (searchCriteria) url.searchParams.append('searchCriteria', searchCriteria);
       if (searchValue) url.searchParams.append('searchValue', searchValue);
 
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), {
+        headers: getAuthHeaders(),
+      });
+      handleUnauthorized(res.status);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch (err) {
@@ -31,7 +58,10 @@ export const apiService = {
       url.searchParams.append('type', 'logs');
       url.searchParams.append('limit', String(limit));
 
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), {
+        headers: getAuthHeaders(),
+      });
+      handleUnauthorized(res.status);
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
 
@@ -39,7 +69,6 @@ export const apiService = {
         temperature: Number(row.temperature),
         humidity: Number(row.humidity),
         light: Number(row.light),
-        status: 'NORMAL' as const,
         timestamp: row.timestamp,
       }));
 
@@ -53,7 +82,10 @@ export const apiService = {
   // 2. THIẾT BỊ (GET /api/devices và PATCH /api/devices/:id)
   async getDevices(): Promise<{ devices: Device[]; isEsp32Online: boolean }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/devices`);
+      const res = await fetch(`${API_BASE_URL}/devices`, {
+        headers: getAuthHeaders(),
+      });
+      handleUnauthorized(res.status);
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
       return { devices: data.devices || [], isEsp32Online: !!data.isEsp32Online };
@@ -72,9 +104,10 @@ export const apiService = {
     try {
       const res = await fetch(`${API_BASE_URL}/devices/${deviceId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ isON, deviceCode, userId }),
       });
+      handleUnauthorized(res.status);
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {
         return { success: false, error: data.error || 'Thiết bị không phản hồi' };
@@ -101,7 +134,10 @@ export const apiService = {
       if (actionFilter) url.searchParams.append('actionFilter', actionFilter);
       if (statusFilter) url.searchParams.append('statusFilter', statusFilter);
 
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), {
+        headers: getAuthHeaders(),
+      });
+      handleUnauthorized(res.status);
       if (!res.ok) throw new Error('API error');
       return await res.json();
     } catch (err) {
@@ -116,7 +152,10 @@ export const apiService = {
       const url = new URL(`${API_BASE_URL}/user`);
       url.searchParams.append('username', username);
 
-      const res = await fetch(url.toString());
+      const res = await fetch(url.toString(), {
+        headers: getAuthHeaders(),
+      });
+      handleUnauthorized(res.status);
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
       return data.profile;
@@ -133,12 +172,66 @@ export const apiService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-      if (!res.ok) return null;
+      if (res.status === 401 || res.status === 400) return null;
+      if (!res.ok) {
+        throw new Error(`Máy chủ phản hồi lỗi (${res.status})`);
+      }
       const data = await res.json();
-      return data.user;
-    } catch (err) {
+      return data;
+    } catch (err: any) {
       console.error('[API Service] verifyUserLogin error:', err);
-      return null;
+      if (err.message && !err.message.includes('fetch')) {
+        throw err;
+      }
+      throw new Error('Không thể kết nối đến máy chủ Backend!');
+    }
+  },
+
+  // 5. ALERT API (Cảnh báo ánh sáng > X)
+  async getAlertStatus(): Promise<{ isAlertActive: boolean; threshold: number }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/alert/status`, {
+        headers: getAuthHeaders(),
+      });
+      handleUnauthorized(res.status);
+      if (!res.ok) throw new Error('API error');
+      return await res.json();
+    } catch (err) {
+      console.error('[API Service] getAlertStatus error:', err);
+      return { isAlertActive: false, threshold: 300 };
+    }
+  },
+
+  async setAlertThreshold(threshold: number): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/alert/threshold`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ threshold }),
+      });
+      handleUnauthorized(res.status);
+      return res.ok;
+    } catch (err) {
+      console.error('[API Service] setAlertThreshold error:', err);
+      return false;
+    }
+  },
+
+
+  async getAlertStats(period: 'day' | 'month' = 'day'): Promise<AlertStatItem[]> {
+    try {
+      const url = new URL(`${API_BASE_URL}/alert/stats`);
+      url.searchParams.append('period', period);
+
+      const res = await fetch(url.toString(), {
+        headers: getAuthHeaders(),
+      });
+      handleUnauthorized(res.status);
+      if (!res.ok) throw new Error('API error');
+      return await res.json();
+    } catch (err) {
+      console.error('[API Service] getAlertStats error:', err);
+      return [];
     }
   }
 };

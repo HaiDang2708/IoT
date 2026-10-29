@@ -179,8 +179,8 @@ Lưu trữ danh sách các thiết bị đầu ra trong hệ thống:
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
 | :--- | :--- | :--- | :--- |
 | id | INT | Khóa chính tự tăng | Định danh thiết bị |
-| ma_thiet_bi | VARCHAR(50) | Duy nhất, không rỗng | Mã định danh thiết bị như led1, led2, led3 |
-| ten_thiet_bi | VARCHAR(100) | Không rỗng | Tên hiển thị như Quạt, Máy hút ẩm, Đèn ngoài trời |
+| ma_thiet_bi | VARCHAR(50) | Duy nhất, không rỗng | Mã định danh thiết bị như led1, led2, led3, led_alert |
+| ten_thiet_bi | VARCHAR(100) | Không rỗng | Tên hiển thị như Quạt, Máy hút ẩm, Đèn ngoài trời, LED cảnh báo |
 | chan_gpio | INT | Không rỗng | Số chân GPIO vật lý trên mạch ESP32 |
 | trang_thai_hien_tai | BOOLEAN | Mặc định 0 | Trạng thái hiện tại gồm 1 là bật, 0 là tắt |
 
@@ -195,6 +195,7 @@ Lưu trữ thông tin và thuộc tính kỹ thuật của từng cảm biến:
 | ten_cam_bien | VARCHAR(100) | Không rỗng | Tên hiển thị của cảm biến |
 | loai_cam_bien | VARCHAR(50) | Không rỗng | Loại số liệu đo gồm temperature, humidity, light |
 | don_vi | VARCHAR(20) | Không rỗng | Đơn vị đo lường gồm °C, %, lux |
+| nguong_canh_bao | DECIMAL(6,1) | Mặc định 300.0 | Ngưỡng cường độ ánh sáng kích hoạt LED cảnh báo |
 
 ### Bảng sensor_logs - Nhật ký dữ liệu cảm biến
 Lưu trữ các số đo môi trường định kỳ được gửi từ vi điều khiển:
@@ -215,7 +216,7 @@ Ghi nhận toàn bộ thao tác bật tắt thiết bị, người thực hiện
 | device_id | INT | Khóa ngoại tham chiếu devices | Thiết bị nhận lệnh |
 | user_id | INT | Khóa ngoại tham chiếu users | Tài khoản người dùng phát lệnh |
 | trang_thai_moi | BOOLEAN | Không rỗng | Trạng thái yêu cầu gồm 1 là bật, 0 là tắt |
-| ket_qua | VARCHAR(20) | Mặc định SUCCESS | Trạng thái xử lý gồm SUCCESS, LOADING, FAILED |
+| ket_qua | VARCHAR(20) | Mặc định SUCCESS | Trạng thái xử lý gồm SUCCESS, LOADING, FAILED, ALERT |
 | thoi_gian | DATETIME | Mặc định thời điểm hiện tại | Mốc thời gian gửi lệnh điều khiển |
 | thoi_gian_phan_hoi | DATETIME | Có thể rỗng | Mốc thời gian nhận xác nhận từ mạch ESP32 |
 
@@ -226,7 +227,7 @@ Lưu trữ thông tin xác thực tài khoản quản trị và hồ sơ chi ti�
 
 ## Đặc tả giao thức MQTT và các topic
 
-Hệ thống sử dụng máy chủ MQTT Broker công cộng `broker.emqx.io` qua cổng TCP `1883` với 3 topic cốt lõi:
+Hệ thống sử dụng máy chủ MQTT Broker công cộng `broker.emqx.io` qua cổng TCP `1883` với 4 topic cốt lõi:
 
 ### 1. Topic Sensor - Dữ liệu đo cảm biến
 * Hướng truyền: ESP32 gửi lên MQTT Broker và chuyển tiếp tới Backend.
@@ -253,7 +254,7 @@ Hệ thống sử dụng máy chủ MQTT Broker công cộng `broker.emqx.io` qu
 
 ### 3. Topic Device_respond - Xác nhận trạng thái thiết bị
 * Hướng truyền: Mạch ESP32 gửi lên MQTT Broker và chuyển tiếp tới Backend.
-* Cờ cấu hình: retain bằng true để các máy khách mới kết nối lập tức nhận được trạng thái mới nhất.
+* Cờ cấu hình: retain bằng false để tránh lưu đè lệnh cũ trên Broker.
 * Cấu trúc gói tin JSON:
   ```json
   {
@@ -264,7 +265,18 @@ Hệ thống sử dụng máy chủ MQTT Broker công cộng `broker.emqx.io` qu
   ```
 * Chức năng: Sau khi mạch ESP32 gạt chân GPIO tương ứng thành công, nó gửi gói tin xác nhận này lên hệ thống. Máy chủ Backend ghi nhận mốc thời gian hoàn thành vào cột `thoi_gian_phan_hoi` trong bảng `device_logs`, xác nhận kết quả thành công SUCCESS.
 
-### 4. Lệnh kiểm thử nhanh bằng Mosquitto CLI
+### 4. Topic Device_setting - Cài đặt ngưỡng cảnh báo ánh sáng
+* Hướng truyền: Máy chủ Backend gửi xuống mạch ESP32.
+* Cờ cấu hình: retain bằng true để khi ESP32 khởi động lại sẽ lập tức nhận ngay ngưỡng cấu hình mới nhất.
+* Cấu trúc gói tin JSON:
+  ```json
+  {
+    "threshold_lux": 300.0
+  }
+  ```
+* Chức năng: Đồng bộ mốc ngưỡng cảnh báo $X$ (Lux) từ giao diện Web và CSDL xuống bộ nhớ vi điều khiển ESP32.
+
+### 5. Lệnh kiểm thử nhanh bằng Mosquitto CLI
 
 * Lắng nghe dữ liệu cảm biến:
   ```bash

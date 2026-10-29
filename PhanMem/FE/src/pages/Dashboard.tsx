@@ -8,6 +8,7 @@ import {
   Fan,
   Power,
   Loader2,
+  Bell,
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -22,7 +23,7 @@ import {
 } from 'chart.js';
 import type { ChartOptions, ChartData } from 'chart.js';
 import { Card } from '../components/Common/Card';
-import type { Device, SensorReading } from '../types';
+import type { Device } from '../types';
 import { useApp } from '../contexts/AppContext';
 
 // Đăng ký module ChartJS một lần
@@ -43,7 +44,7 @@ const SENSOR_THEMES = {
     glow: 'sensor-glow-temp',
   },
   hum: {
-    bgIcon: 'bg-emerald-50 text-emerald-500 dark:bg-emerald-550/10 dark:text-emerald-400',
+    bgIcon: 'bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400',
     border: 'hover:border-emerald-300/60',
     glow: 'sensor-glow-hum',
   },
@@ -89,6 +90,42 @@ const SensorCard: React.FC<SensorCardProps> = ({
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all shadow-inner ${theme.bgIcon} ${theme.glow}`}
         >
           <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// 1.1 COMPONENT THẺ LED CẢNH BÁO
+interface AlertSensorCardProps {
+  isAlert: boolean;
+}
+
+const AlertSensorCard: React.FC<AlertSensorCardProps> = ({ isAlert }) => {
+  return (
+    <Card
+      className={`transition-all duration-300 ${
+        isAlert
+          ? 'border-rose-400 bg-rose-50/60 ring-2 ring-rose-400/40 shadow-md shadow-rose-500/20 animate-pulse'
+          : 'border-slate-100 hover:border-slate-200'
+      }`}
+      contentClassName="p-4"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">LED CẢNH BÁO</p>
+          <h3 className={`text-xl font-black mt-0.5 tracking-tight ${isAlert ? "text-rose-600" : "text-slate-700"}`}>
+            Đèn cảnh báo
+          </h3>
+        </div>
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-300 shadow-inner ${
+            isAlert
+              ? 'bg-rose-500 text-white shadow-rose-500/40 animate-bounce'
+              : 'bg-slate-100 text-slate-400'
+          }`}
+        >
+          <Bell className="h-5 w-5" />
         </div>
       </div>
     </Card>
@@ -374,6 +411,7 @@ export const DashboardPage: React.FC = () => {
     currentSensor,
     loadingDeviceIds,
     toggleDeviceState,
+    isAlertActive,
   } = useApp();
 
   const { labels, temps, hums, lights } = useMemo(() => {
@@ -418,11 +456,12 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full space-y-3.5 overflow-hidden">
-      {/* Lưới hiển thị các thẻ cảm biến */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+      {/* Lưới hiển thị các thẻ cảm biến + Thẻ LED cảnh báo chân 6 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
         {sensorCardsConfig.map((c) => (
           <SensorCard key={c.label} {...c} />
         ))}
+        <AlertSensorCard isAlert={isAlertActive} />
       </div>
 
       {/* Lưới điều khiển thiết bị */}

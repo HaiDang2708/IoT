@@ -36,6 +36,11 @@ interface AppContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
 
+  // Global Alert state
+  isAlertActive: boolean;
+  alertThreshold: number;
+  setAlertThresholdValue: (val: number) => Promise<boolean>;
+
   // Global Toast state
   toastMessage: string | null;
   setToastMessage: (msg: string | null) => void;
@@ -74,6 +79,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('dang_iot_session') === 'true';
   });
 
+  const [isAlertActive, setIsAlertActive] = useState<boolean>(false);
+  const [alertThreshold, setAlertThreshold] = useState<number>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('alertThreshold') : null;
+    return saved !== null && !isNaN(Number(saved)) && Number(saved) > 0 ? Number(saved) : 300;
+  });
+
   const isInitializedRef = useRef(false);
 
   useEffect(() => {
@@ -81,6 +92,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentSensor(sensorLogs[sensorLogs.length - 1]);
     }
   }, [sensorLogs]);
+
+  const setAlertThresholdValue = async (val: number): Promise<boolean> => {
+    const success = await apiService.setAlertThreshold(val);
+    if (success) {
+      setAlertThreshold(val);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('alertThreshold', String(val));
+      }
+      setToastType('success');
+      setToastMessage(`Đã cài đặt ngưỡng cảnh báo ánh sáng: ${val} Lux`);
+    } else {
+      setToastType('error');
+      setToastMessage('Lỗi cập nhật ngưỡng cảnh báo');
+    }
+    return success;
+  };
 
   // 1. Tải dữ liệu ban đầu từ API Local khi ứng dụng khởi chạy
   useEffect(() => {
@@ -95,6 +122,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (dbLogs.length > 0) {
         setSensorLogs(dbLogs);
       }
+
+      // Nạp trạng thái cảnh báo và ngưỡng
+      const alertStatus = await apiService.getAlertStatus();
+      setIsAlertActive(alertStatus.isAlertActive);
+      if (alertStatus.threshold !== undefined && alertStatus.threshold !== null) {
+        setAlertThreshold(alertStatus.threshold);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('alertThreshold', String(alertStatus.threshold));
+        }
+      }
       
       setTimeout(() => {
         isInitializedRef.current = true;
@@ -103,7 +140,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadInitialData();
   }, []);
 
-  // 2. Định kỳ 3 giây đồng bộ danh sách thiết bị, cảm biến & ESP32 Online
+  // 2. Định kỳ 3 giây đồng bộ danh sách thiết bị, cảm biến & ESP32 Online & Cảnh báo
   useEffect(() => {
     const interval = setInterval(async () => {
       if (typeof document !== 'undefined' && document.hidden) return;
@@ -123,9 +160,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         setIsEsp32Online(deviceRes.isEsp32Online);
 
-        const dbLogs = await apiService.getSensorLogs(25);
-        if (dbLogs && dbLogs.length > 0) {
-          setSensorLogs(dbLogs);
+        // sensorLogs định kỳ khi người dùng đang ở Dashboard để vẽ biểu đồ và thẻ cảm biến
+        const isDashboard = typeof window !== 'undefined' && 
+          (!window.location.hash || window.location.hash === '#/' || window.location.hash.startsWith('#/dashboard'));
+
+        if (isDashboard) {
+          const dbLogs = await apiService.getSensorLogs(25);
+          if (dbLogs && dbLogs.length > 0) {
+            setSensorLogs(dbLogs);
+          }
+        }
+
+        // Cập nhật trạng thái nháy Box cảnh báo thời gian thực
+        const alertStatus = await apiService.getAlertStatus();
+        setIsAlertActive(alertStatus.isAlertActive);
+        if (alertStatus.threshold !== undefined && alertStatus.threshold !== null) {
+          setAlertThreshold(alertStatus.threshold);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('alertThreshold', String(alertStatus.threshold));
+          }
         }
       }
     }, 3000);
@@ -188,11 +241,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const userData = await apiService.verifyUserLogin(username, password);
+      const loginRes = await apiService.verifyUserLogin(username, password);
 
-      if (!userData) {
+      if (!loginRes || !loginRes.user) {
         console.warn('[Login] User not found, incorrect password, or DB error');
         return false;
+      }
+
+      const userData = loginRes.user;
+      if (loginRes.token) {
+        localStorage.setItem('dang_iot_token', loginRes.token);
       }
 
       setIsAuthenticated(true);
@@ -224,12 +282,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     } catch (err) {
       console.error('[Login] Exception:', err);
-      return false;
+      throw err;
     }
   };
 
   const logout = () => {
     setIsAuthenticated(false);
+    localStorage.removeItem('dang_iot_token');
     localStorage.removeItem('dang_iot_session');
     localStorage.removeItem('dang_iot_username');
     localStorage.removeItem('dang_iot_user_profile');
@@ -244,6 +303,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         userProfile,
         isAuthenticated,
         isEsp32Online,
+        isAlertActive,
+        alertThreshold,
+        setAlertThresholdValue,
         loadingDeviceIds,
         toggleDeviceState,
         login,

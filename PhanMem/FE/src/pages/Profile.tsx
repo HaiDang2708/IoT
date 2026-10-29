@@ -83,7 +83,7 @@ const InfoItem: React.FC<InfoItemProps> = ({
   title,
 }) => (
   <div className="p-2.5 bg-slate-50/70 hover:bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-2.5 transition flex-1">
-    <div className={`flex h-7.5 w-7.5 items-center justify-center rounded-lg ${bgIconColor} ${iconColor} shrink-0`}>
+    <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${bgIconColor} ${iconColor} shrink-0`}>
       <Icon className="h-4 w-4" />
     </div>
     <div className="min-w-0 flex-1">
@@ -166,10 +166,10 @@ export const ProfilePage: React.FC = () => {
   const personalItems: InfoItemProps[] = useMemo(() => [
     { label: 'Ngày sinh', value: birthday || '27/08/2005', icon: Calendar, bgIconColor: 'bg-indigo-50', iconColor: 'text-indigo-600' },
     { label: 'Giới tính', value: user.gioiTinh || 'Nam', icon: User, bgIconColor: 'bg-pink-50', iconColor: 'text-pink-600' },
-    { label: 'Số điện thoại', value: user.phone || '0334296045', icon: Phone, bgIconColor: 'bg-blue-50', iconColor: 'text-blue-600' },
-    { label: 'Địa chỉ Email', value: user.email || 'dang8@gmail.com', icon: Mail, bgIconColor: 'bg-violet-50', iconColor: 'text-violet-600', title: user.email },
+    { label: 'Số điện thoại', value: user.phone || '0987654321', icon: Phone, bgIconColor: 'bg-blue-50', iconColor: 'text-blue-600' },
+    { label: 'Địa chỉ Email', value: user.email || 'student@ptit.edu.vn', icon: Mail, bgIconColor: 'bg-violet-50', iconColor: 'text-violet-600', title: user.email },
     { label: 'Múi giờ hệ thống', value: user.muiGio || 'Việt Nam (GMT+7)', icon: Clock, bgIconColor: 'bg-emerald-50', iconColor: 'text-emerald-600' },
-    { label: 'Địa chỉ liên hệ', value: user.diaChi || 'Yên Xá - Thanh Liệt - Hà Nội', icon: MapPin, bgIconColor: 'bg-rose-50', iconColor: 'text-rose-600' },
+    { label: 'Địa chỉ liên hệ', value: user.diaChi || 'Hà Nội, Việt Nam', icon: MapPin, bgIconColor: 'bg-rose-50', iconColor: 'text-rose-600' },
   ], [user, birthday]);
 
   return (
@@ -185,7 +185,7 @@ export const ProfilePage: React.FC = () => {
 
         <div className="flex items-center gap-4 relative z-10 min-w-0">
           <div className="relative shrink-0">
-            <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-full border-3 border-white/95 shadow-lg bg-slate-100 overflow-hidden flex items-center justify-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-[3px] border-white/95 shadow-lg bg-slate-100 overflow-hidden flex items-center justify-center">
               {user.avatar ? (
                 <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover object-center rounded-full" />
               ) : (

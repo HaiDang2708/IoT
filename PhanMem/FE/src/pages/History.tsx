@@ -7,6 +7,8 @@ import { Calendar, Cpu, Zap, Activity, Search, ChevronDown, AlertCircle, X, Rota
 import { apiService } from '../services/api/apiService';
 import type { MergedHistoryItem } from '../types';
 import { useApp } from '../contexts/AppContext';
+import { CopyTimeButton } from '../components/Common/CopyTimeButton';
+import { validateTimeInput } from '../utils/date';
 
 interface HistoryFilters {
   time: string;
@@ -20,25 +22,6 @@ const DEFAULT_FILTERS: HistoryFilters = {
   device: 'ALL',
   action: 'ALL',
   status: 'ALL',
-};
-
-// Regex cố định ngoài component
-const LETTER_REGEX = /[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]/;
-const TIME_REGEX = /^(\d{4}([-/]\d{1,2}([-/]\d{1,2}(\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?)?)?)?|\d{1,2}(:\d{1,2}(:\d{1,2})?)?|\d{1,2}[-/]\d{1,2}([-/]\d{4}(\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?)?)?)$/;
-
-const validateTimeInput = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  if (LETTER_REGEX.test(trimmed)) {
-    return 'Thời gian không được chứa chữ cái (VD: 01:19:18, 01:19, 01 hoặc 2026-10-15)';
-  }
-
-  if (!TIME_REGEX.test(trimmed)) {
-    return 'Định dạng thời gian không hợp lệ (VD: 01:19:18, 01:19, 01 hoặc 2026-10-15)';
-  }
-
-  return null;
 };
 
 // Cấu hình bảng cố định 
@@ -59,6 +42,9 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
     header: 'Hành động',
     className: 'w-32',
     render: (row) => {
+      if (row.ten_thiet_bi === 'LED cảnh báo' || !row.hanh_dong || row.hanh_dong === '---') {
+        return <span className="text-slate-400 font-bold text-xs">---</span>;
+      }
       const isON = String(row.hanh_dong).toUpperCase() === 'ON';
       return (
         <span
@@ -77,6 +63,14 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
     className: 'w-36',
     render: (row) => {
       const st = String(row.trang_thai).toUpperCase();
+      if (st === 'ALERT' || row.ten_thiet_bi === 'LED cảnh báo') {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 shadow-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            ALERT
+          </span>
+        );
+      }
       if (st === 'LOADING' || st === 'PENDING') {
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 animate-pulse shadow-xs">
@@ -85,17 +79,10 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
           </span>
         );
       }
-      if (st === 'ON') {
+      if (st === 'ON' || st === 'OFF' || st === 'SUCCESS') {
         return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
-            ON
-          </span>
-        );
-      }
-      if (st === 'OFF') {
-        return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 shadow-xs">
-            OFF
+            SUCCESS
           </span>
         );
       }
@@ -109,11 +96,20 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
   {
     key: 'thoi_gian_gui',
     header: 'Thời gian gửi',
-    render: (row) => (
-      <span className="font-bold text-slate-600 text-xs tracking-tight">
-        {row.thoi_gian_gui || '---'}
-      </span>
-    ),
+    render: (row) => {
+      if (!row.thoi_gian_gui || row.thoi_gian_gui === '---') {
+        return <span className="text-slate-400 font-bold text-xs">---</span>;
+      }
+      const val = row.thoi_gian_gui;
+      return (
+        <div className="inline-flex items-center gap-1.5">
+          <span className="font-bold text-slate-600 text-xs tracking-tight">
+            {val}
+          </span>
+          <CopyTimeButton timeStr={val} />
+        </div>
+      );
+    },
   },
   {
     key: 'thoi_gian_phan_hoi',
@@ -126,14 +122,19 @@ const TABLE_COLUMNS: Column<MergedHistoryItem>[] = [
         row.status === 'LOADING' ||
         !row.thoi_gian_phan_hoi;
 
+      const val = row.thoi_gian_phan_hoi;
+
       return (
-        <span
-          className={`font-bold text-xs tracking-tight ${
-            isPending ? 'text-amber-500 italic' : 'text-slate-600'
-          }`}
-        >
-          {isPending ? 'Đang chờ ESP32...' : row.thoi_gian_phan_hoi}
-        </span>
+        <div className="inline-flex items-center gap-1.5">
+          <span
+            className={`font-bold text-xs tracking-tight ${
+              isPending ? 'text-amber-500 italic' : 'text-slate-600'
+            }`}
+          >
+            {isPending ? 'Đang chờ ESP32...' : val}
+          </span>
+          {!isPending && val && val !== '---' && <CopyTimeButton timeStr={val} />}
+        </div>
       );
     },
   },
@@ -171,7 +172,7 @@ export const HistoryPage: React.FC = () => {
     const names = devices
       .map((d) => d.device_name?.trim())
       .filter((name): name is string => Boolean(name));
-    return Array.from(new Set(names));
+    return Array.from(new Set([...names, 'LED cảnh báo']));
   }, [devices]);
 
   const fetchHistory = useCallback(async (showLoading = true) => {
@@ -185,7 +186,7 @@ export const HistoryPage: React.FC = () => {
       );
       setHistoryLogs(data || []);
     } catch (err) {
-      console.error('Lỗi khi tải lịch sử hoạt động:', err);
+      console.error('Lỗi khi tải lịch sử:', err);
     } finally {
       if (showLoading) setIsLoading(false);
     }
@@ -284,7 +285,7 @@ export const HistoryPage: React.FC = () => {
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <Card
         title="Lịch sử hoạt động"
-        description="Nhật ký thao tác điều khiển thiết bị"
+        description="Nhật ký thao tác điều khiển thiết bị & cảnh báo"
         className="flex-1 min-h-0 flex flex-col overflow-hidden"
         contentClassName="flex-1 min-h-0 p-4 md:p-5 overflow-hidden flex flex-col"
         headerActions={
@@ -365,8 +366,8 @@ export const HistoryPage: React.FC = () => {
                 className="appearance-none h-10 pl-9 pr-8 bg-white border border-slate-200 hover:border-slate-300 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-400/20 focus:border-emerald-500 cursor-pointer shadow-sm transition-all"
               >
                 <option value="ALL">Tất cả trạng thái</option>
-                <option value="ON">ON</option>
-                <option value="OFF">OFF</option>
+                <option value="SUCCESS">SUCCESS</option>
+                <option value="ALERT">ALERT</option>
                 <option value="LOADING">LOADING</option>
                 <option value="FAILED">FAILED</option>
               </select>

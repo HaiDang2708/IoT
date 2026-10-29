@@ -14,7 +14,7 @@ const sensorMap = {
   humidity: 2,
   light: 3
 };
-
+  
 async function loadSensorMap() {
   try {
     const [rows] = await db.query('SELECT id, loai_cam_bien FROM sensors');
@@ -84,7 +84,7 @@ async function insertSensorReading() {
 }
 
 
-// API: Lấy danh sách log cảm biến cho Frontend (Sử dụng SQL PIVOT đảm bảo 100% tương thích API cũ)
+// API: Lấy danh sách log cảm biến cho Frontend 
 async function getSensorLogs(limit = 72) {
   try {
     const tempId = sensorMap['temperature'] || 1;
@@ -152,10 +152,11 @@ async function getRawSensorLogs(limit = 100, searchCriteria = null, searchValue 
         conditions.push(`s.loai_cam_bien = ? AND sl.gia_tri = ?`);
         params.push(searchCriteria, isNaN(numVal) ? trimmedVal : numVal);
       } else if (searchCriteria === 'all' || !searchCriteria) {
-        // Tìm kiếm tổng quát
-        const timeCond = buildSmartTimeCondition(trimmedVal, 'sl.thoi_gian');
-        const timeClause = timeCond.clause || "DATE_FORMAT(sl.thoi_gian, '%Y-%m-%d %H:%i:%s') LIKE ?";
-        const timeParams = timeCond.clause ? timeCond.params : [`%${trimmedVal}%`];
+        // Tìm kiếm tổng quát (hỗ trợ lọc thời gian thông minh tương đương mục 'time' cùng với tên & giá trị)
+        const isTimePattern = /[:\-/]/.test(trimmedVal) || /^\d{1,4}$/.test(trimmedVal);
+        const timeCond = isTimePattern ? buildSmartTimeCondition(trimmedVal, 'sl.thoi_gian') : null;
+        const timeClause = (timeCond && timeCond.clause) ? timeCond.clause : "DATE_FORMAT(sl.thoi_gian, '%Y-%m-%d %H:%i:%s') LIKE ?";
+        const timeParams = (timeCond && timeCond.clause) ? timeCond.params : [`%${trimmedVal}%`];
 
         conditions.push(`(
           s.ten_cam_bien LIKE ? OR 

@@ -1,5 +1,3 @@
-export type SensorStatus = 'NORMAL' | 'WARNING' | 'CRITICAL';
-
 export interface UserProfile {
   id?: string;
   username: string;
@@ -32,7 +30,6 @@ export interface SensorReading {
   temperature: number;
   humidity: number;
   light: number;
-  status: SensorStatus;
   timestamp: string;
 }
 
@@ -54,4 +51,10 @@ export interface MergedHistoryItem {
   thoi_gian_gui: string;
   thoi_gian_phan_hoi: string;
   status?: string;
+}
+
+
+export interface AlertStatItem {
+  time_label: string;
+  count: number;
 }

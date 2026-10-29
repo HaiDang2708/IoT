@@ -46,12 +46,13 @@ CREATE TABLE devices (
 -- 3. Bảng danh mục cảm biến
 CREATE TABLE sensors (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    device_id INT NOT NULL,
+    device_id INT NULL,
     ma_cam_bien VARCHAR(50) UNIQUE NOT NULL,
     ten_cam_bien VARCHAR(100) NOT NULL,
     loai_cam_bien VARCHAR(50) NOT NULL,
     don_vi VARCHAR(20) NOT NULL,
-    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+    nguong_canh_bao DECIMAL(6,1) DEFAULT 300.0,
+    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. Bảng nhật ký dữ liệu cảm biến
@@ -89,9 +90,9 @@ VALUES (
     'ADMIN', 
     '$2b$10$WFi0QkVLe22.hviUMnjFge7lQVk2w/s9pXdDiZ/7O/3rvlbv7LzB6', 
     'Đặng Trần Hải Đăng', 
-    'dang@gmail.com', 
-    '2005-08-27', 
-    '0334296045', 
+    'student@ptit.edu.vn', 
+    '2005-01-01', 
+    '0987654321', 
     'https://github.com/HaiDang-05', 
     'https://drive.google.com/drive/folders/...',
     'https://documenter.getpostman.com/view/57401053/2sBYHRW2B4',
@@ -111,14 +112,15 @@ INSERT INTO devices (id, ma_thiet_bi, ten_thiet_bi, chan_gpio, trang_thai_hien_t
 VALUES 
 (1, 'led1', 'Quạt', 11, FALSE),
 (2, 'led2', 'Máy hút ẩm', 12, FALSE),
-(3, 'led3', 'Đèn sân', 7, FALSE);
+(3, 'led3', 'Đèn sân', 7, FALSE),
+(4, 'led_alert', 'LED cảnh báo', 6, FALSE);
 
 -- Khởi tạo danh mục cảm biến
-INSERT INTO sensors (id, device_id, ma_cam_bien, ten_cam_bien, loai_cam_bien, don_vi)
+INSERT INTO sensors (id, device_id, ma_cam_bien, ten_cam_bien, loai_cam_bien, don_vi, nguong_canh_bao)
 VALUES
-(1, 1, 'temp_sensor', 'Cảm biến nhiệt độ', 'temperature', '°C'),
-(2, 1, 'hum_sensor', 'Cảm biến độ ẩm', 'humidity', '%'),
-(3, 1, 'light_sensor', 'Cảm biến ánh sáng', 'light', 'lux');
+(1, 1, 'temp_sensor', 'Cảm biến nhiệt độ', 'temperature', '°C', NULL),
+(2, 1, 'hum_sensor', 'Cảm biến độ ẩm', 'humidity', '%', NULL),
+(3, 1, 'light_sensor', 'Cảm biến ánh sáng', 'light', 'lux', 300.0);
 
 -- Một số bản ghi quan trắc mẫu
 INSERT INTO sensor_logs (sensor_id, gia_tri, thoi_gian) VALUES

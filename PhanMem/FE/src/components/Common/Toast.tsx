@@ -38,12 +38,12 @@ export const Toast: React.FC<ToastProps> = ({
   };
 
   return (
-    <div className={`fixed bottom-5 right-5 z-55 flex items-center gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5 fade-in duration-300 ${borders[type]}`}>
+    <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5 fade-in duration-300 ${borders[type]}`}>
       {icons[type]}
       <p className="text-xs font-bold text-slate-800 leading-normal tracking-wide">{message}</p>
       <button
         onClick={onClose}
-        className="rounded-lg p-1 text-slate-400 hover:bg-slate-200/50 hover:text-slate-650 transition focus:outline-none"
+        className="rounded-lg p-1 text-slate-400 hover:bg-slate-200/50 hover:text-slate-700 transition focus:outline-none"
       >
         <X className="h-4 w-4" />
       </button>

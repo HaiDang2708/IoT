@@ -1,10 +1,32 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const mysqlSensorService = require('../services/mysqlSensorService');
 const mysqlDeviceService = require('../services/mysqlDeviceService');
 const mysqlUserService = require('../services/mysqlUserService');
+const mysqlAlertService = require('../services/mysqlAlertService');
 const { getIsEsp32Online, waitForDeviceAck } = require('../handlers/mqttHandler');
 const { client: mqttClient, coreTopics } = require('../config/mqtt');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dang_iot_jwt_secret_key_2026';
+
+// Middleware xác thực JWT Token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Định dạng: Bearer <token>
+
+  if (!token) {
+    return res.status(401).json({ error: 'Yêu cầu đăng nhập (Thiếu token xác thực)' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: 'Phiên đăng nhập đã hết hạn hoặc token không hợp lệ' });
+    }
+    req.user = decoded;
+    next();
+  });
+};
 
 // 1. AUTH API: Xác thực đăng nhập
 // POST /api/auth/login
@@ -19,14 +41,19 @@ router.post('/auth/login', async (req, res) => {
     return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
   }
 
-  res.json({ user });
+  // Tạo JWT Token có thời hạn 24 giờ
+  const token = jwt.sign(
+    { id: user.id, username: user.ten_dang_nhap },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+
+  res.json({ user, token });
 });
 
-// =========================================================================
 // 2. USER API: Lấy thông tin Hồ sơ người dùng
 // GET /api/user?username=...
-// =========================================================================
-router.get('/user', async (req, res) => {
+router.get('/user', authenticateToken, async (req, res) => {
   const username = req.query.username || req.query.ten_dang_nhap;
   if (!username) {
     return res.status(400).json({ error: 'Thiếu thông số username' });
@@ -41,18 +68,16 @@ router.get('/user', async (req, res) => {
 });
 
 
-// =========================================================================
-// 3. DEVICE API: Quản lý & Điều khiển Thiết bị
-// GET /api/devices (Lấy danh sách)
-// PATCH /api/devices/:id (Cập nhật: Bật/Tắt, Tên/Vị trí)
-// =========================================================================
-router.get('/devices', async (req, res) => {
+// 3. DEVICE API: Điều khiển Thiết bị
+// GET /api/devices 
+// PATCH /api/devices/:id
+router.get('/devices', authenticateToken, async (req, res) => {
   const devices = await mysqlDeviceService.getDevices();
   const isEsp32Online = getIsEsp32Online();
   res.json({ devices, isEsp32Online });
 });
 
-router.patch('/devices/:id', async (req, res) => {
+router.patch('/devices/:id', authenticateToken, async (req, res) => {
   const deviceId = req.params.id;
   const { isON, deviceCode, userId } = req.body;
 
@@ -68,11 +93,11 @@ router.patch('/devices/:id', async (req, res) => {
     if (result.deviceCode) codeToUse = result.deviceCode;
 
     const isOnline = getIsEsp32Online();
+    const effectiveUserId = req.user?.id || userId || null;
     const pendingLogId = await mysqlDeviceService.insertDeviceLog(
       deviceId, 
-      result.oldState, 
       updatedState, 
-      userId || null, 
+      effectiveUserId, 
       'LOADING'
     );
 
@@ -116,11 +141,11 @@ router.patch('/devices/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// =========================================================================
+
 // 4. SENSOR API: Quan trắc Cảm biến & Biểu đồ Analytics
 // GET /api/sensors?type=logs | chart | raw_logs
-// =========================================================================
-router.get('/sensors', async (req, res) => {
+
+router.get('/sensors', authenticateToken, async (req, res) => {
   const { type, limit, searchCriteria, searchValue } = req.query;
 
   if (type === 'raw_logs') {
@@ -136,11 +161,10 @@ router.get('/sensors', async (req, res) => {
   res.json(logs);
 });
 
-// =========================================================================
+
 // 5. SYSTEM API: Cảnh báo Navbar & Lịch sử
 // GET /api/system?type=history | warnings
-// =========================================================================
-router.get('/system', async (req, res) => {
+router.get('/system', authenticateToken, async (req, res) => {
   const { type, searchTime, deviceFilter, actionFilter, statusFilter } = req.query;
 
   if (type === 'history') {
@@ -149,6 +173,47 @@ router.get('/system', async (req, res) => {
   }
 
   return res.status(400).json({ error: 'Yêu cầu tham số type=history hợp lệ' });
+});
+
+
+// 6. ALERT API: Quản lý & Thống kê Cảnh báo Ánh sáng (LED cảnh báo chân 6)
+
+// Lấy thông tin trạng thái & ngưỡng X hiện tại
+// GET /api/alert/status
+router.get('/alert/status', authenticateToken, async (req, res) => {
+  try {
+    const status = mysqlAlertService.getAlertStatus();
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cài đặt ngưỡng X
+// POST /api/alert/threshold { threshold }
+router.post('/alert/threshold', authenticateToken, async (req, res) => {
+  try {
+    const { threshold } = req.body;
+    if (threshold === undefined || threshold === null) {
+      return res.status(400).json({ error: 'Vui lòng cung cấp giá trị ngưỡng threshold' });
+    }
+    const updated = await mysqlAlertService.setThreshold(threshold);
+    res.json({ success: true, threshold: updated });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Thống kê số lượt cảnh báo theo ngày / tháng
+// GET /api/alert/stats?period=day|month
+router.get('/alert/stats', authenticateToken, async (req, res) => {
+  try {
+    const period = req.query.period === 'month' ? 'month' : 'day';
+    const stats = await mysqlAlertService.getAlertStats(period);
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

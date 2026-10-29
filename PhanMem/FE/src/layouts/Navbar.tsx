@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Trang chủ',
   sensor: 'Dữ liệu cảm biến',
   history: 'Lịch sử hoạt động',
+  alert: 'Trung tâm Cảnh báo',
   profile: 'Thông tin cá nhân',
 };
 

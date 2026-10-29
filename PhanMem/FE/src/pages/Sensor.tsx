@@ -6,13 +6,11 @@ import { Pagination } from '../components/Common/Pagination';
 import { Search, Filter, ChevronDown, AlertCircle, X, RotateCcw } from 'lucide-react';
 import { apiService } from '../services/api/apiService';
 import type { RawSensorLog } from '../types';
-import { formatDateTime } from '../utils/date';
+import { formatDateTime, validateTimeInput } from '../utils/date';
+import { CopyTimeButton } from '../components/Common/CopyTimeButton';
 
 type SearchCriteria = 'all' | 'temperature' | 'humidity' | 'light' | 'time';
 
-// Hằng số Regex tĩnh ngoài component
-const LETTER_REGEX = /[a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]/;
-const TIME_REGEX = /^(\d{4}([-/]\d{1,2}([-/]\d{1,2}(\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?)?)?)?|\d{1,2}(:\d{1,2}(:\d{1,2})?)?|\d{1,2}[-/]\d{1,2}([-/]\d{4}(\s+\d{1,2}(:\d{1,2}(:\d{1,2})?)?)?)?)$/;
 const NUMBER_REGEX = /^-?\d+(\.\d+)?$/;
 
 const validateInput = (criteria: SearchCriteria, value: string): string | null => {
@@ -20,13 +18,7 @@ const validateInput = (criteria: SearchCriteria, value: string): string | null =
   if (!trimmed) return null;
 
   if (criteria === 'time') {
-    if (LETTER_REGEX.test(trimmed)) {
-      return 'Thời gian không được chứa chữ cái (VD: 01:19:18, 01:19, 01 hoặc 2026-10-15)';
-    }
-    if (!TIME_REGEX.test(trimmed)) {
-      return 'Định dạng thời gian không hợp lệ (VD: 01:19:18, 01:19, 01 hoặc 2026-10-15)';
-    }
-    return null;
+    return validateTimeInput(trimmed);
   }
 
   if (criteria === 'temperature' || criteria === 'humidity' || criteria === 'light') {
@@ -45,7 +37,7 @@ const PLACEHOLDERS: Record<SearchCriteria, string> = {
   temperature: 'Nhập giá trị nhiệt độ...',
   humidity: 'Nhập giá trị độ ẩm...',
   light: 'Nhập giá trị ánh sáng...',
-  all: 'Nhập từ khóa tìm kiếm...',
+  all: 'Tìm theo giá trị, tên cảm biến hoặc thời gian (VD: 09:03, 2026-10-22)...',
 };
 
 const CRITERIA_OPTIONS: { value: SearchCriteria; label: string }[] = [
@@ -87,7 +79,15 @@ const TABLE_COLUMNS: Column<RawSensorLog>[] = [
   {
     key: 'timestamp',
     header: 'Thời gian',
-    render: (row) => <span className="font-bold text-slate-700">{formatDateTime(row.timestamp)}</span>,
+    render: (row) => {
+      const formatted = formatDateTime(row.timestamp);
+      return (
+        <div className="inline-flex items-center gap-2">
+          <span className="font-bold text-slate-700">{formatted}</span>
+          <CopyTimeButton timeStr={formatted} />
+        </div>
+      );
+    },
   },
 ];
 

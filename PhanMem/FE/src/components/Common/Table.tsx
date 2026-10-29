@@ -23,7 +23,7 @@ export function Table<T extends { id?: string | number }>({
   emptyText = 'Không có dữ liệu hiển thị',
 }: TableProps<T>) {
   return (
-    <div className="w-full h-full min-h-0 overflow-auto select-none premium-table-container rounded-xl">
+    <div className="w-full h-full min-h-0 overflow-auto select-text premium-table-container rounded-xl">
       <table className="w-full border-collapse text-left text-sm text-slate-500">
         <thead className="sticky top-0 z-20 shadow-xs">
           <tr>

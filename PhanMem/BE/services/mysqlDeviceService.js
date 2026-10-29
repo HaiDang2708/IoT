@@ -21,10 +21,10 @@ async function syncDevicePhysicalState(code, isON) {
   }
 }
 
-// API: Lấy danh sách thiết bị cho Frontend
+// API: Lấy danh sách thiết bị cho Frontend (chỉ lấy các thiết bị điều khiển thủ công, bỏ qua LED cảnh báo tự động)
 async function getDevices() {
   try {
-    const [rows] = await db.query('SELECT * FROM devices ORDER BY id ASC');
+    const [rows] = await db.query("SELECT * FROM devices WHERE ma_thiet_bi != 'led_alert' ORDER BY id ASC");
     return rows.map(row => ({
       id: String(row.id),
       device_code: row.ma_thiet_bi,
@@ -53,9 +53,8 @@ async function updateDeviceState(deviceId, isON) {
   }
 }
 
-
-// API: Ghi log điều khiển thiết bị (Lưu vết user_id thực hiện)
-async function insertDeviceLog(deviceId, oldState, newState, userId = null, ketQua = 'LOADING') {
+// API: Ghi log điều khiển thiết bị 
+async function insertDeviceLog(deviceId, newState, userId = null, ketQua = 'LOADING') {
   try {
     const isDone = (ketQua === 'SUCCESS');
     const [res] = await db.query(
@@ -100,7 +99,7 @@ async function resolvePendingDeviceLogs(deviceCode, ketQua = 'SUCCESS') {
   }
 }
 
-// API: Lấy danh sách lịch sử hoạt động (Action History) chuẩn hóa theo yêu cầu
+// API: Lấy danh sách lịch sử hoạt động (Action History) chuẩn hóa theo yêu cầu từ device_logs
 async function getMergedHistory(searchTime = null, deviceFilter = null, actionFilter = null, statusFilter = null) {
   const list = [];
   try {
@@ -118,24 +117,31 @@ async function getMergedHistory(searchTime = null, deviceFilter = null, actionFi
       }
     }
 
-    // 3. Lọc theo thiết bị (khớp chính xác tên hoặc mã thiết bị)
+    // 2. Lọc theo thiết bị (khớp chính xác tên hoặc mã thiết bị)
     if (deviceFilter && deviceFilter !== 'ALL' && deviceFilter !== 'Tất cả thiết bị') {
       conditions.push(`(d.ten_thiet_bi = ? OR d.ma_thiet_bi = ?)`);
       params.push(deviceFilter, deviceFilter);
     }
 
-    // 4. Lọc theo hành động (ON / OFF)
+    // 3. Lọc theo hành động (ON / OFF)
     if (actionFilter && actionFilter !== 'ALL' && actionFilter !== 'Tất cả hành động') {
       const actVal = (actionFilter.toUpperCase() === 'ON' || actionFilter === '1');
-      conditions.push(`dl.trang_thai_moi = ?`);
-      params.push(actVal);
+      if (actVal) {
+        conditions.push(`dl.trang_thai_moi = 1 AND dl.ket_qua != 'ALERT'`);
+      } else {
+        conditions.push(`dl.trang_thai_moi = 0 AND dl.ket_qua != 'ALERT'`);
+      }
     }
 
-    // 5. Lọc theo trạng thái (ON, OFF, LOADING, FAILED)
+    // 4. Lọc theo trạng thái (ON, OFF, SUCCESS, ALERT, LOADING, FAILED)
     if (statusFilter && statusFilter !== 'ALL' && statusFilter !== 'Tất cả trạng thái') {
       const stUpper = statusFilter.toUpperCase();
       if (stUpper === 'LOADING') {
         conditions.push(`(dl.ket_qua = 'LOADING' OR dl.ket_qua = 'PENDING')`);
+      } else if (stUpper === 'SUCCESS') {
+        conditions.push(`dl.ket_qua = 'SUCCESS'`);
+      } else if (stUpper === 'ALERT') {
+        conditions.push(`dl.ket_qua = 'ALERT'`);
       } else if (stUpper === 'ON') {
         conditions.push(`(dl.ket_qua = 'SUCCESS' AND dl.trang_thai_moi = 1)`);
       } else if (stUpper === 'OFF') {
@@ -170,21 +176,24 @@ async function getMergedHistory(searchTime = null, deviceFilter = null, actionFi
     const [devLogs] = await db.query(devSql, params);
     
     devLogs.forEach(row => {
-      const isON = !!row.trang_thai_moi;
-      const actionReq = isON ? 'ON' : 'OFF';
+      const isAlert = (row.ket_qua === 'ALERT' || row.ma_thiet_bi === 'led_alert');
       const isPending = (row.ket_qua === 'LOADING' || row.ket_qua === 'PENDING');
       const isFailed = (row.ket_qua === 'FAILED');
+      const isON = !!row.trang_thai_moi;
+      const actionReq = isON ? 'ON' : 'OFF';
       
-      let statusResult = isPending ? 'LOADING' : isFailed ? 'FAILED' : actionReq;
+      let statusResult = isAlert ? 'ALERT' : (isPending ? 'LOADING' : (isFailed ? 'FAILED' : actionReq));
 
       list.push({
         id: row.id,
-        ten_thiet_bi: row.ten_thiet_bi || 'Thiết bị',
+        ten_thiet_bi: row.ten_thiet_bi || (isAlert ? 'LED cảnh báo' : 'Thiết bị'),
         ma_thiet_bi: row.ma_thiet_bi,
-        hanh_dong: actionReq, // 'ON' hoặc 'OFF'
-        trang_thai: statusResult, // 'ON', 'OFF', 'LOADING', hoặc 'FAILED'
-        thoi_gian_gui: row.thoi_gian_gui || '',
-        thoi_gian_phan_hoi: isPending ? 'Đang chờ...' : (row.thoi_gian_phan_hoi || (isFailed ? 'Thất bại' : row.thoi_gian_gui)),
+        hanh_dong: isAlert ? '' : actionReq, // 'ON' hoặc 'OFF', rỗng nếu là ALERT
+        trang_thai: statusResult, // 'ON', 'OFF', 'LOADING', 'FAILED', hoặc 'ALERT'
+        thoi_gian_gui: isAlert ? '---' : (row.thoi_gian_gui || ''),
+        thoi_gian_phan_hoi: isAlert 
+          ? (row.thoi_gian_phan_hoi || row.thoi_gian_gui || '') 
+          : (isPending ? 'Đang chờ...' : (row.thoi_gian_phan_hoi || (isFailed ? 'Thất bại' : row.thoi_gian_gui))),
         status: row.ket_qua
       });
     });
@@ -208,6 +217,13 @@ async function handleEsp32Offline() {
   }
 }
 
+function handleEsp32Online() {
+  if (isEsp32OfflineLogged) {
+    console.log('🟢 [ESP32 Status] Trạng thái phần cứng: ONLINE');
+    isEsp32OfflineLogged = false;
+  }
+}
+
 module.exports = {
   syncDevicePhysicalState,
   getDevices,
@@ -216,5 +232,6 @@ module.exports = {
   updateDeviceLogStatus,
   resolvePendingDeviceLogs,
   getMergedHistory,
-  handleEsp32Offline
+  handleEsp32Offline,
+  handleEsp32Online
 };

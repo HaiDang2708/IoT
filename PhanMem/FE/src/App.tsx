@@ -4,6 +4,7 @@ import { DashboardPage } from './pages/Dashboard';
 import { SensorPage } from './pages/Sensor';
 import { HistoryPage } from './pages/History';
 import { ProfilePage } from './pages/Profile';
+import { AlertPage } from './pages/Alert';
 import { LoginPage } from './pages/Login';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { Toast } from './components/Common/Toast';
@@ -26,6 +27,7 @@ function AppRoutes() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/sensor" element={<SensorPage />} />
               <Route path="/history" element={<HistoryPage />} />
+              <Route path="/alert" element={<AlertPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/login" element={<Navigate to="/dashboard" replace />} />
             </Route>

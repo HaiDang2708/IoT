@@ -21,11 +21,12 @@ if (process.env.MQTT_PASSWORD && process.env.MQTT_PASSWORD.trim() !== '') {
 
 const client = mqtt.connect(brokerUrl, clientOptions);
 
-// Danh sách 3 Topic chuẩn chính thức trong hệ thống IoT
+// Danh sách 4 Topic chuẩn chính thức trong hệ thống IoT
 const coreTopics = {
   SENSOR: 'Sensor',
   DEVICE_CONTROL: 'Device_control',
-  DEVICE_RESPOND: 'Device_respond'
+  DEVICE_RESPOND: 'Device_respond',
+  DEVICE_SETTING: 'Device_setting'
 };
 
 module.exports = {

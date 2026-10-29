@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Activity, History, User, Cpu, LogOut } from 'lucide-react';
+import { LayoutDashboard, Activity, History, User, Cpu, LogOut, Bell } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
 interface SidebarProps {
@@ -13,6 +13,7 @@ const MENU_ITEMS = [
   { id: 'dashboard', name: 'Trang chủ', icon: LayoutDashboard },
   { id: 'sensor', name: 'Dữ liệu cảm biến', icon: Activity },
   { id: 'history', name: 'Lịch sử hoạt động', icon: History },
+  { id: 'alert', name: 'Cảnh báo', icon: Bell },
   { id: 'profile', name: 'Thông tin cá nhân', icon: User },
 ];
 

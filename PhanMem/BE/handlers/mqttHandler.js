@@ -1,6 +1,7 @@
 const EventEmitter = require('events');
 const mysqlSensorService = require('../services/mysqlSensorService');
 const mysqlDeviceService = require('../services/mysqlDeviceService');
+const mysqlAlertService = require('../services/mysqlAlertService');
 
 const deviceAckEmitter = new EventEmitter();
 deviceAckEmitter.setMaxListeners(50);
@@ -15,10 +16,13 @@ function getIsEsp32Online() {
 let espHeartbeatTimer = null;
 
 function resetEspHeartbeatTimer() {
+  if (!isEsp32OnlineBE) {
+    mysqlDeviceService.handleEsp32Online();
+  }
   isEsp32OnlineBE = true;
   if (espHeartbeatTimer) clearTimeout(espHeartbeatTimer);
   espHeartbeatTimer = setTimeout(async () => {
-    console.log('[Heartbeat Timeout] Không nhận được tín hiệu cảm biến từ ESP32 trong 8 giây. Coi như ESP32 đã OFFLINE.');
+    console.log('Không nhận được tín hiệu cảm biến từ ESP32 trong 8 giây. Coi như ESP32 đã OFFLINE.');
     isEsp32OnlineBE = false;
     await mysqlDeviceService.handleEsp32Offline();
   }, 8000);
@@ -79,6 +83,8 @@ async function handleMqttMessage(topic, payload) {
       if (luxVal !== null && !isNaN(luxVal)) {
         mysqlSensorService.lastSensorReading.lux = luxVal;
         mysqlSensorService.lastSensorReading.isUpdated = true;
+        // Kiểm tra ngưỡng cảnh báo ánh sáng > X và tự động ghi nhật ký cảnh báo
+        mysqlAlertService.checkLightAlert(luxVal);
       }
     }
 

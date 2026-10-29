@@ -4,12 +4,14 @@ const cors = require('cors');
 const { client, coreTopics } = require('./config/mqtt');
 const { handleMqttMessage } = require('./handlers/mqttHandler');
 const mysqlSensorService = require('./services/mysqlSensorService');
+const mysqlAlertService = require('./services/mysqlAlertService');
 const apiRouter = require('./routes/api');
 
-// 1. Khởi chạy thực thi bộ đệm cảm biến lúc khởi động
+// 1. Khởi chạy thực thi bộ đệm cảm biến và nạp cấu hình ngưỡng lúc khởi động
 async function initSystem() {
   try {
     await mysqlSensorService.initializeSensorCache();
+    await mysqlAlertService.initAlertSettings();
     console.log('✅ [System] Khởi tạo bộ đệm CSDL (MySQL) thành công.');
   } catch (err) {
     console.error('❌ [System Error] Gặp lỗi khi khởi tạo hệ thống:', err.message);
@@ -30,6 +32,9 @@ client.on('connect', () => {
     if (err) console.error('❌ [MQTT] Subscription failed:', err.message);
     else console.log(`📡 [MQTT] Đã đăng ký lắng nghe các topic: ${topics.join(', ')}`);
   });
+
+  // Tự động phát lại ngưỡng đã lưu từ CSDL lên MQTT kèm cờ retain: true
+  mysqlAlertService.publishCurrentThreshold();
 });
 
 client.on('message', handleMqttMessage);
